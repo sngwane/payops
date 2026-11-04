@@ -70,6 +70,7 @@ public class PaymentQueries(PaymentsDbContext db)
                 r.AccountNumber,
                 r.BranchCode,
                 r.Amount,
-                r.PaymentRecord.RejectionReason))
+                r.PaymentRecord.RejectionReason,
+                r.RejectionReason))
             .ToListAsync(cancellationToken);
 }

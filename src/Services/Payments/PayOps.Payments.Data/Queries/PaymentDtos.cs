@@ -48,4 +48,5 @@ public sealed record RejectionDto(
     string AccountNumber,
     string BranchCode,
     decimal Amount,
-    string? RejectionReason);
+    string? PaymentReason,
+    string? RefundReason);
