@@ -48,6 +48,7 @@ public class PaymentQueriesTests(SqlServerFixture fixture)
             var client = await TestData.AddClientAsync(db);
             var summary = TestData.NewSummary(client.Id);
             var paid = TestData.NewRecord(150m);
+            paid.TransactionStatusId = (byte)TransactionStatusCode.Success;
             var paidEarlier = TestData.NewRecord(160m);
             var transmitted = TestData.NewRecord(170m);
             summary.PaymentRecords.Add(paid);

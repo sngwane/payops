@@ -40,6 +40,7 @@ public class PaymentQueries(PaymentsDbContext db)
             .AsNoTracking()
             .Where(h => h.TransactionStatusId == (byte)TransactionStatusCode.Success
                         && h.PaymentRejectionId == null
+                        && h.PaymentRecord.TransactionStatusId == (byte)TransactionStatusCode.Success
                         && h.ChangedDate >= fromUtc && h.ChangedDate < toUtc)
             .OrderBy(h => h.ChangedDate)
             .Select(h => new PaidPaymentDto(
