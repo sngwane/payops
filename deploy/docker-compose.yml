@@ -1,0 +1,22 @@
+# Local / single-server SQL Server for PayOps. Usage:
+#   cp deploy/.env.example deploy/.env   (set a strong password)
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: payops-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in deploy/.env}
+    ports:
+      - "127.0.0.1:${SQL_PORT:-14333}:1433"
+    volumes:
+      - payops-sql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  payops-sql-data:
