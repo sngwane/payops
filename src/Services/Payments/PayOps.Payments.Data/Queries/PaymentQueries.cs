@@ -65,6 +65,8 @@ public class PaymentQueries(PaymentsDbContext db)
                 r.PaymentRecord.PaymentSummary.SecondaryClient.Name,
                 r.PaymentRecord.PaymentSummary.PaymentBatch != null ? r.PaymentRecord.PaymentSummary.PaymentBatch.Reference : null,
                 r.PaymentRecord.PaymentSummary.PaymentBatch != null ? r.PaymentRecord.PaymentSummary.PaymentBatch.FileName : null,
+                r.PaymentBatch != null ? r.PaymentBatch.Reference : null,
+                r.PaymentBatch != null ? r.PaymentBatch.FileName : null,
                 r.PaymentRecord.PaymentSummary.ServiceType.Name,
                 r.PaymentRecord.PaymentSummary.PaymentDate,
                 r.AccountNumber,

@@ -104,6 +104,8 @@ public class PaymentQueriesTests(SqlServerFixture fixture)
         var row = Assert.Single(unreconciledRows, r => r.Id == unreconciledId);
         Assert.Equal("Account closed", row.PaymentReason);
         Assert.Null(row.RefundReason);
+        Assert.Null(row.RefundBatchReference);
+        Assert.Null(row.RefundFileName);
         Assert.DoesNotContain(unreconciledRows, r => r.Id == pendingId);
 
         var pendingRows = await queries.GetRejectionsAsync(TransactionStatusCode.Pending);
