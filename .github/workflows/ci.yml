@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      - run: dotnet build --configuration Release
+      - name: Check model matches migrations
+        run: dotnet ef migrations has-pending-model-changes -p src/Shared/PayOps.Database
+      - name: Test (SQL Server 2022 via Testcontainers)
+        run: dotnet test --configuration Release --no-build
