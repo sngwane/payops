@@ -112,4 +112,49 @@ public class PaymentQueriesTests(SqlServerFixture fixture)
         Assert.Contains(pendingRows, r => r.Id == pendingId);
         Assert.DoesNotContain(pendingRows, r => r.Id == unreconciledId);
     }
+
+    [Fact]
+    public async Task Rejected_refund_returns_both_runs_and_reasons()
+    {
+        long refundId;
+        string paymentRun, refundRun;
+        await using (var db = fixture.CreatePayOpsContext())
+        {
+            var maker = await TestData.AddUserAsync(db);
+            var bank = await TestData.AddBankAsync(db);
+            var client = await TestData.AddClientAsync(db);
+            var originalBatch = new PaymentBatch { BankId = bank.Id, Reference = TestData.Unique("BR"), Name = "Run A", FileName = "runA.txt", RunDate = DateTime.UtcNow, CreatedByUserId = maker.Id };
+            var refundBatch = new PaymentBatch { BankId = bank.Id, Reference = TestData.Unique("BR"), Name = "Run B", FileName = "runB.txt", RunDate = DateTime.UtcNow, CreatedByUserId = maker.Id };
+            var summary = TestData.NewSummary(client.Id);
+            summary.PaymentBatch = originalBatch;
+            var record = TestData.NewRecord(130m);
+            record.TransactionStatusId = (byte)TransactionStatusCode.Rejected;
+            record.RejectionReason = "Account closed";
+            summary.PaymentRecords.Add(record);
+            db.PaymentSummaries.Add(summary);
+            db.PaymentBatches.Add(refundBatch);
+            await db.SaveChangesAsync();
+
+            var refund = new PaymentRejection
+            {
+                PaymentRecordId = record.Id, PaymentBatch = refundBatch, AccountName = "Rej", BranchCode = "250655",
+                AccountNumber = "62000000001", Amount = 130m, TransactionStatusId = (byte)TransactionStatusCode.Rejected,
+                RejectionReason = "Invalid refund account"
+            };
+            db.PaymentRejections.Add(refund);
+            await db.SaveChangesAsync();
+            (refundId, paymentRun, refundRun) = (refund.Id, originalBatch.Reference, refundBatch.Reference);
+        }
+
+        await using var payments = fixture.CreatePaymentsContext();
+        var rows = await new PaymentQueries(payments).GetRejectionsAsync(TransactionStatusCode.Rejected);
+
+        var row = Assert.Single(rows, r => r.Id == refundId);
+        Assert.Equal(paymentRun, row.PaymentBatchReference);
+        Assert.Equal("runA.txt", row.PaymentFileName);
+        Assert.Equal(refundRun, row.RefundBatchReference);
+        Assert.Equal("runB.txt", row.RefundFileName);
+        Assert.Equal("Account closed", row.PaymentReason);
+        Assert.Equal("Invalid refund account", row.RefundReason);
+    }
 }
