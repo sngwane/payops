@@ -18,7 +18,7 @@ public class SchemaTests(SqlServerFixture fixture)
 
         string[] expected =
         [
-            "AccountType", "AppUser", "ApprovalStatus", "Bank", "BankClientProfile", "BatchStatus", "PaymentBatch",
+            "AccountType", "AppUser", "ApprovalStatus", "Bank", "BankClientProfile", "BatchStatus", "ClientApiKey", "ClientBankAccount", "PaymentBatch",
             "PaymentRecord", "PaymentRecordStatusHistory", "PaymentRejection", "PaymentSummary", "PaymentSummaryComment",
             "PaymentSummaryHistory", "PrimaryClient", "ReconStatus", "Role", "SecondaryClient", "ServiceType",
             "TransactionStatus", "UserRole"
