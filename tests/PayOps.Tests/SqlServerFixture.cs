@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PayOps.Client.Data;
 using PayOps.Database;
 using PayOps.Payments.Data;
 using Testcontainers.MsSql;
@@ -28,6 +29,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public PayOpsDbContext CreatePayOpsContext()
         => new(new DbContextOptionsBuilder<PayOpsDbContext>().UseSqlServer(ConnectionString).Options);
+
+    public ClientDbContext CreateClientContext()
+        => new(new DbContextOptionsBuilder<ClientDbContext>().UseSqlServer(ConnectionString).Options);
 
     public PaymentsDbContext CreatePaymentsContext()
         => new(new DbContextOptionsBuilder<PaymentsDbContext>().UseSqlServer(ConnectionString).Options);
