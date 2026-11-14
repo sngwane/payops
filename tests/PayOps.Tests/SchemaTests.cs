@@ -18,9 +18,9 @@ public class SchemaTests(SqlServerFixture fixture)
 
         string[] expected =
         [
-            "AccountType", "AppUser", "ApprovalStatus", "Bank", "BankClientProfile", "BatchStatus", "ClientApiKey", "ClientBankAccount", "PaymentBatch",
-            "PaymentRecord", "PaymentRecordStatusHistory", "PaymentRejection", "PaymentSummary", "PaymentSummaryComment",
-            "PaymentSummaryHistory", "PrimaryClient", "ReconStatus", "Role", "SecondaryClient", "ServiceType",
+            "AccountType", "AppUser", "ApprovalStatus", "Bank", "BankClientProfile", "BatchContact", "BatchStatus", "BatchUpload", "BillingRate",
+            "ClientApiKey", "ClientBankAccount", "JobLease", "NotificationMessage", "PaymentBatch", "PaymentRecord", "PaymentRecordStatusHistory", "PaymentRejection", "PaymentSummary", "PaymentSummaryComment",
+            "PaymentSummaryHistory", "PrimaryClient", "PublicHoliday", "ReconStatus", "Role", "SecondaryClient", "ServiceType",
             "TransactionStatus", "UserRole"
         ];
         Assert.Equal(expected.Order(), tables.Order());

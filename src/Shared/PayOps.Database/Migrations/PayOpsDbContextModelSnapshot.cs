@@ -264,6 +264,46 @@ namespace PayOps.Database.Migrations
                     b.ToTable("BankClientProfile", (string)null);
                 });
 
+            modelBuilder.Entity("PayOps.Database.Entities.BatchContact", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CellNumber")
+                        .HasMaxLength(15)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("PaymentSummaryId")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Purpose")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentSummaryId", "Purpose");
+
+                    b.ToTable("BatchContact", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BatchContact_Channel", "[Email] IS NOT NULL OR [CellNumber] IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("PayOps.Database.Entities.BatchStatus", b =>
                 {
                     b.Property<byte>("Id")
@@ -328,6 +368,115 @@ namespace PayOps.Database.Migrations
                             Code = "Duplicate",
                             IsActive = true,
                             Name = "Duplicate"
+                        });
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.BatchUpload", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("ClientApiKeyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ErrorsJson")
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte>("Format")
+                        .HasColumnType("tinyint");
+
+                    b.Property<bool>("IsAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<int?>("PaymentSummaryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReceivedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<int?>("RecordCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SecondaryClientId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TotalValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("UniqueClientId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UniqueReference")
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientApiKeyId");
+
+                    b.HasIndex("PaymentSummaryId");
+
+                    b.HasIndex("ReceivedDate");
+
+                    b.HasIndex("SecondaryClientId", "ReceivedDate");
+
+                    b.ToTable("BatchUpload", (string)null);
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.BillingRate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("FeePerRecord")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte>("ServiceTypeId")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceTypeId", "EffectiveFrom")
+                        .IsUnique();
+
+                    b.ToTable("BillingRate", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BillingRate_FeePerRecord", "[FeePerRecord] >= 0");
                         });
                 });
 
@@ -463,6 +612,106 @@ namespace PayOps.Database.Migrations
                         .HasFilter("[IsActive] = 1");
 
                     b.ToTable("ClientBankAccount", (string)null);
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.JobLease", b =>
+                {
+                    b.Property<string>("JobName")
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastRunDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(200)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("JobName");
+
+                    b.ToTable("JobLease", (string)null);
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.NotificationMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("DeduplicationKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("NextAttemptDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PaymentSummaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SecondaryClientId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SentDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)1);
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeduplicationKey")
+                        .IsUnique();
+
+                    b.HasIndex("PaymentSummaryId");
+
+                    b.HasIndex("SecondaryClientId");
+
+                    b.HasIndex("Status", "NextAttemptDate");
+
+                    b.ToTable("NotificationMessage", (string)null);
                 });
 
             modelBuilder.Entity("PayOps.Database.Entities.PaymentBatch", b =>
@@ -835,6 +1084,12 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("datetime2(3)")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
+                    b.Property<decimal>("FeeTotal")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<DateTime?>("ModifiedDate")
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)");
@@ -1021,6 +1276,41 @@ namespace PayOps.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("PrimaryClient", (string)null);
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.PublicHoliday", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<DateOnly>("HolidayDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HolidayDate")
+                        .IsUnique();
+
+                    b.ToTable("PublicHoliday", (string)null);
                 });
 
             modelBuilder.Entity("PayOps.Database.Entities.ReconStatus", b =>
@@ -1335,6 +1625,52 @@ namespace PayOps.Database.Migrations
                     b.Navigation("Bank");
                 });
 
+            modelBuilder.Entity("PayOps.Database.Entities.BatchContact", b =>
+                {
+                    b.HasOne("PayOps.Database.Entities.PaymentSummary", "PaymentSummary")
+                        .WithMany("Contacts")
+                        .HasForeignKey("PaymentSummaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PaymentSummary");
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.BatchUpload", b =>
+                {
+                    b.HasOne("PayOps.Database.Entities.ClientApiKey", "ClientApiKey")
+                        .WithMany()
+                        .HasForeignKey("ClientApiKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PayOps.Database.Entities.PaymentSummary", "PaymentSummary")
+                        .WithMany()
+                        .HasForeignKey("PaymentSummaryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PayOps.Database.Entities.SecondaryClient", "SecondaryClient")
+                        .WithMany()
+                        .HasForeignKey("SecondaryClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ClientApiKey");
+
+                    b.Navigation("PaymentSummary");
+
+                    b.Navigation("SecondaryClient");
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.BillingRate", b =>
+                {
+                    b.HasOne("PayOps.Database.Entities.ServiceType", "ServiceType")
+                        .WithMany()
+                        .HasForeignKey("ServiceTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ServiceType");
+                });
+
             modelBuilder.Entity("PayOps.Database.Entities.ClientApiKey", b =>
                 {
                     b.HasOne("PayOps.Database.Entities.PrimaryClient", "PrimaryClient")
@@ -1369,6 +1705,23 @@ namespace PayOps.Database.Migrations
                     b.Navigation("AccountType");
 
                     b.Navigation("PrimaryClient");
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.NotificationMessage", b =>
+                {
+                    b.HasOne("PayOps.Database.Entities.PaymentSummary", "PaymentSummary")
+                        .WithMany()
+                        .HasForeignKey("PaymentSummaryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PayOps.Database.Entities.SecondaryClient", "SecondaryClient")
+                        .WithMany()
+                        .HasForeignKey("SecondaryClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PaymentSummary");
+
+                    b.Navigation("SecondaryClient");
                 });
 
             modelBuilder.Entity("PayOps.Database.Entities.PaymentBatch", b =>
@@ -1614,6 +1967,8 @@ namespace PayOps.Database.Migrations
             modelBuilder.Entity("PayOps.Database.Entities.PaymentSummary", b =>
                 {
                     b.Navigation("Comments");
+
+                    b.Navigation("Contacts");
 
                     b.Navigation("PaymentRecords");
                 });

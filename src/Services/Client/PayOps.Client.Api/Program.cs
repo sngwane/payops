@@ -1,6 +1,7 @@
 using PayOps.Client.Api.Authentication;
 using PayOps.Client.Api.Endpoints;
 using PayOps.Client.Data;
+using PayOps.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,21 +10,11 @@ var connectionString = builder.Configuration.GetConnectionString("PayOps")
 
 builder.Services.AddClientData(connectionString);
 builder.Services.AddClientApiAuth(builder.Configuration, builder.Environment);
-builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks().AddDbContextCheck<ClientDbContext>();
+builder.Services.AddPayOpsApiDefaults().AddDbContextCheck<ClientDbContext>();
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
-app.UseStatusCodePages();
-app.UseAuthentication();
-app.UseAuthorization();
-
-if (app.Environment.IsDevelopment())
-    app.MapOpenApi();
-
-app.MapHealthChecks("/health").AllowAnonymous();
+app.UsePayOpsApiDefaults();
 app.MapClientEndpoints();
 
 app.Run();

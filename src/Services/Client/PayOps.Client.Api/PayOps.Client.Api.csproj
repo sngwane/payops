@@ -5,13 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PayOps.Client.Data\PayOps.Client.Data.csproj" />
+    <ProjectReference Include="..\..\..\Shared\PayOps.ServiceDefaults\PayOps.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

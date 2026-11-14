@@ -1,0 +1,205 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using PayOps.BatchFile.Data;
+using PayOps.BatchFile.Data.Services;
+using PayOps.Database.Entities;
+using PayOps.Database.Lookups;
+
+namespace PayOps.Tests;
+
+[Collection(SqlServerCollection.Name)]
+public class BatchSubmissionTests(SqlServerFixture fixture)
+{
+    private static byte[] Hash(string text) => SHA256.HashData(Encoding.UTF8.GetBytes(text));
+
+    [Fact]
+    public async Task Accepted_batch_writes_summary_payments_history_contacts_outbox_and_upload_log()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var contacts = new BatchNotifications([new BatchContactInfo("Payroll", "payroll@test.local", null)]);
+        var batch = BatchTestData.Batch(client.UniqueClientId, notifications: contacts);
+
+        await using var db = fixture.CreateBatchFileContext();
+        var result = await BatchTestData.Service(db).SubmitAsync(caller, batch, BatchUploadFormat.Json, Hash("a"));
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        var id = result.Value!.BatchId;
+        await using var check = fixture.CreatePayOpsContext();
+        var summary = await check.PaymentSummaries.Include(s => s.PaymentRecords).ThenInclude(r => r.StatusHistory).Include(s => s.Contacts).SingleAsync(s => s.Id == id);
+        Assert.Equal((byte)ReconStatusCode.Unreconciled, summary.ReconStatusId);
+        Assert.Equal(201.00m, summary.TotalValue);
+        Assert.Equal(0m, summary.FeeTotal);
+        Assert.All(summary.PaymentRecords, r => Assert.Equal((byte)TransactionStatusCode.Pending, r.TransactionStatusId));
+        Assert.All(summary.PaymentRecords, r => Assert.Single(r.StatusHistory));
+        Assert.Equal(ContactPurpose.UploadConfirmation, Assert.Single(summary.Contacts).Purpose);
+        var message = await check.NotificationMessages.SingleAsync(m => m.PaymentSummaryId == id);
+        Assert.Equal(NotificationType.UploadConfirmation, message.Type);
+        Assert.Equal(NotificationMessageStatus.Pending, message.Status);
+        var upload = await check.BatchUploads.SingleAsync(u => u.PaymentSummaryId == id);
+        Assert.True(upload.IsAccepted);
+        Assert.Null(upload.ErrorsJson);
+    }
+
+    [Fact]
+    public async Task Footer_total_may_include_billing_fees_which_are_stored_separately()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        if (!await payOps.BillingRates.AnyAsync(r => r.ServiceTypeId == (byte)ServiceTypeCode.OneDay && r.EffectiveFrom == new DateOnly(2000, 1, 1)))
+        {
+            payOps.BillingRates.Add(new BillingRate { ServiceTypeId = (byte)ServiceTypeCode.OneDay, FeePerRecord = 2.50m, EffectiveFrom = new DateOnly(2000, 1, 1) });
+            await payOps.SaveChangesAsync();
+        }
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+
+        var withFees = BatchTestData.Batch(client.UniqueClientId, serviceType: "1 DAY", paymentDate: FixedClock.Today.AddDays(1), footerTotal: 206.00m);
+        var accepted = await service.SubmitAsync(caller, withFees, BatchUploadFormat.Json, Hash("fees"));
+        Assert.True(accepted.IsSuccess, accepted.Error?.Message);
+        Assert.Equal(5.00m, accepted.Value!.FeeTotal);
+        Assert.Equal(201.00m, accepted.Value.TotalValue);
+
+        var wrong = BatchTestData.Batch(client.UniqueClientId, serviceType: "ONEDAY", paymentDate: FixedClock.Today.AddDays(1), footerTotal: 205.00m);
+        var rejected = await service.SubmitAsync(caller, wrong, BatchUploadFormat.Json, Hash("wrong"));
+        Assert.Contains("footer.totalValue", rejected.Error!.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task Invalid_batch_returns_field_errors_and_is_logged_without_storing_a_batch()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var batch = BatchTestData.Batch(client.UniqueClientId, count: 3);
+        var payments = batch.Payments.ToList();
+        payments[1] = payments[1] with { AccountNumber = "62-0001", BranchCode = "2506" };
+        payments[2] = payments[2] with { Amount = 10.555m };
+        batch = batch with { Payments = payments };
+
+        await using var db = fixture.CreateBatchFileContext();
+        var result = await BatchTestData.Service(db).SubmitAsync(caller, batch, BatchUploadFormat.Json, Hash("bad"));
+
+        Assert.Equal(BatchErrorKind.Validation, result.Error!.Kind);
+        Assert.Contains("payments[1].accountNumber", result.Error.Errors!.Keys);
+        Assert.Contains("payments[1].branchCode", result.Error.Errors.Keys);
+        Assert.Contains("payments[2].amount", result.Error.Errors.Keys);
+        await using var check = fixture.CreatePayOpsContext();
+        Assert.False(await check.PaymentSummaries.AnyAsync(s => s.UniqueReference == batch.Header.UniquePaymentReference));
+        var upload = await check.BatchUploads.SingleAsync(u => u.UniqueReference == batch.Header.UniquePaymentReference);
+        Assert.False(upload.IsAccepted);
+        Assert.Contains("payments[1].accountNumber", upload.ErrorsJson);
+    }
+
+    [Fact]
+    public async Task Record_count_service_type_and_payment_date_rules_are_enforced()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var holiday = new DateOnly(2026, 11, 26);
+        if (!await payOps.PublicHolidays.AnyAsync(h => h.HolidayDate == holiday))
+        {
+            payOps.PublicHolidays.Add(new PublicHoliday { HolidayDate = holiday, Name = "Test holiday" });
+            await payOps.SaveChangesAsync();
+        }
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+        var id = client.UniqueClientId;
+
+        async Task<string[]> Errors(BatchSubmission batch)
+            => (await service.ValidateAsync(caller, batch)).Error?.Errors?.Keys.ToArray() ?? [];
+
+        Assert.Empty(await Errors(BatchTestData.Batch(id)));
+        Assert.Contains("footer.records", await Errors(BatchTestData.Batch(id) with { Footer = new BatchFooter(FixedClock.Today, 3, 201.00m) }));
+        Assert.Contains("header.serviceType", await Errors(BatchTestData.Batch(id, serviceType: "RTL")));
+        Assert.Contains("header.paymentDate", await Errors(BatchTestData.Batch(id, paymentDate: FixedClock.Today.AddDays(-1))));
+        Assert.Contains("header.paymentDate", await Errors(BatchTestData.Batch(id, serviceType: "1DAY")));
+        Assert.Contains("header.paymentDate", await Errors(BatchTestData.Batch(id, serviceType: "TWODAY", paymentDate: FixedClock.Today.AddDays(1))));
+        Assert.Empty(await Errors(BatchTestData.Batch(id, serviceType: "2 DAY", paymentDate: FixedClock.Today.AddDays(2))));
+        Assert.Contains("header.paymentDate", await Errors(BatchTestData.Batch(id, paymentDate: new DateOnly(2026, 11, 22))));
+        Assert.Contains("header.paymentDate", await Errors(BatchTestData.Batch(id, paymentDate: holiday)));
+    }
+
+    [Fact]
+    public void Two_business_days_skip_weekends_and_holidays()
+    {
+        var friday = new DateOnly(2026, 11, 20);
+        Assert.Equal(new DateOnly(2026, 11, 24), BusinessCalendar.AddBusinessDays(friday, 2, new HashSet<DateOnly>()));
+        Assert.Equal(new DateOnly(2026, 11, 25), BusinessCalendar.AddBusinessDays(friday, 2, new HashSet<DateOnly> { new(2026, 11, 23) }));
+    }
+
+    [Fact]
+    public async Task Key_must_belong_to_the_header_client_but_a_primary_key_may_submit_for_its_secondaries()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var (other, _, _) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var (secondary, _, primaryCaller) = await BatchTestData.AddClientWithKeyAsync(payOps, primaryKey: true);
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+
+        var mismatch = await service.ValidateAsync(caller, BatchTestData.Batch(other.UniqueClientId));
+        Assert.Contains("header.uniqueClientId", mismatch.Error!.Errors!.Keys);
+        Assert.True((await service.ValidateAsync(primaryCaller, BatchTestData.Batch(secondary.UniqueClientId))).IsSuccess);
+        Assert.False((await service.ValidateAsync(primaryCaller, BatchTestData.Batch(client.UniqueClientId))).IsSuccess);
+    }
+
+    [Fact]
+    public async Task Duplicate_reference_is_a_conflict_and_an_identical_retry_returns_the_existing_batch()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var batch = BatchTestData.Batch(client.UniqueClientId);
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+
+        var first = await service.SubmitAsync(caller, batch, BatchUploadFormat.Json, Hash("same"));
+        var retry = await service.SubmitAsync(caller, batch, BatchUploadFormat.Json, Hash("same"));
+        var changed = await service.SubmitAsync(caller, batch with { Footer = batch.Footer }, BatchUploadFormat.Json, Hash("changed"));
+        var sequence = await service.SubmitAsync(caller, BatchTestData.Batch(client.UniqueClientId, sequence: batch.Header.SequenceNumber), BatchUploadFormat.Json, Hash("seq"));
+
+        Assert.True(first.IsSuccess);
+        Assert.Equal(BatchErrorKind.Conflict, retry.Error!.Kind);
+        Assert.Equal(first.Value!.BatchId, retry.Error.ExistingBatchId);
+        Assert.Contains("already accepted", retry.Error.Message);
+        Assert.Contains("UniquePaymentReference", changed.Error!.Message);
+        Assert.Contains("SequenceNumber", sequence.Error!.Message);
+    }
+
+    [Fact]
+    public async Task Legacy_xml_is_accepted_with_contacts_and_bad_xml_is_rejected()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+        var xml = BatchTestData.Xml(client.UniqueClientId, TestData.Unique("X"));
+
+        var accepted = await service.SubmitXmlAsync(caller, xml, Hash(xml));
+        Assert.True(accepted.IsSuccess, accepted.Error?.Message);
+        await using var check = fixture.CreatePayOpsContext();
+        Assert.Equal(3, await check.BatchContacts.CountAsync(c => c.PaymentSummaryId == accepted.Value!.BatchId));
+
+        var notXml = await service.SubmitXmlAsync(caller, "<BulkPaymentXml><Unknown/></BulkPaymentXml>", Hash("n"));
+        Assert.Contains("xml", notXml.Error!.Errors!.Keys);
+        var doctype = await service.SubmitXmlAsync(caller, "<!DOCTYPE x [<!ENTITY e SYSTEM \"file:///etc/passwd\">]><BulkPaymentXml>&e;</BulkPaymentXml>", Hash("d"));
+        Assert.Contains("xml", doctype.Error!.Errors!.Keys);
+        var badAmount = await service.SubmitXmlAsync(caller, BatchTestData.Xml(client.UniqueClientId, TestData.Unique("X"), amount: "12,50"), Hash("b"));
+        Assert.Contains("payments[0].amount", badAmount.Error!.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task Batch_of_50000_payments_is_accepted()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        await using var db = fixture.CreateBatchFileContext();
+
+        var result = await BatchTestData.Service(db).SubmitAsync(caller, BatchTestData.Batch(client.UniqueClientId, count: 50_000, amount: 1.00m),
+            BatchUploadFormat.Json, Hash("big"));
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        await using var check = fixture.CreatePayOpsContext();
+        Assert.Equal(50_000, await check.PaymentRecords.CountAsync(r => r.PaymentSummaryId == result.Value!.BatchId));
+    }
+}

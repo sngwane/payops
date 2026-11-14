@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/BatchFile/">
+    <Project Path="src/Services/BatchFile/PayOps.BatchFile.Api/PayOps.BatchFile.Api.csproj" />
+    <Project Path="src/Services/BatchFile/PayOps.BatchFile.Data/PayOps.BatchFile.Data.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Client/">
     <Project Path="src/Services/Client/PayOps.Client.Api/PayOps.Client.Api.csproj" />
     <Project Path="src/Services/Client/PayOps.Client.Data/PayOps.Client.Data.csproj" />
@@ -10,6 +14,7 @@
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/PayOps.Database/PayOps.Database.csproj" />
+    <Project Path="src/Shared/PayOps.ServiceDefaults/PayOps.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PayOps.Tests/PayOps.Tests.csproj" />

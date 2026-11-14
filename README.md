@@ -11,6 +11,9 @@ reconciliation, notifications and billing. Successor to the legacy BulkPayments 
 src/Shared/PayOps.Database                    Entities, full model (PayOpsDbContext), EF migrations - owns the schema
 src/Services/Client/PayOps.Client.Data        Client API context + LINQ commands/queries (clients, bank accounts, API keys)
 src/Services/Client/PayOps.Client.Api         Client API (ASP.NET Core minimal API, Entra ID auth)
+src/Services/BatchFile/PayOps.BatchFile.Data  Batch File context, legacy XML reader, batch rules, submission service
+src/Services/BatchFile/PayOps.BatchFile.Api   Batch File API (client X-Api-Key uploads + staff endpoints)
+src/Shared/PayOps.ServiceDefaults             Shared Entra auth, roles, ProblemDetails, OpenAPI, /health
 src/Services/Payments/PayOps.Payments.Data    Payments API context (subset of tables) + read-only LINQ queries
 tests/PayOps.Tests                            Integration tests against SQL Server 2022 in Docker
 deploy/docker-compose.yml                     SQL Server container for local / single-server use
@@ -32,6 +35,10 @@ Each API gets its own small DbContext that maps only the tables it uses. Only `P
 - `ClientBankAccount`: a primary client's Nominated / Charges accounts, at most one active per type.
 - `ClientApiKey`: belongs to exactly one primary or secondary client; only the SHA-256 hash is stored, at most 2 active.
 - Client tables use `rowversion` for optimistic concurrency (sent back as `rowVersion` on updates).
+- `BatchUpload` logs every upload attempt (errors and SHA-256 payload hash, never the payload). `BatchContact` holds the
+  contacts sent with a batch. `PaymentSummary.FeeTotal` holds billing fees (from `BillingRate`) when the footer includes them.
+- `NotificationMessage` is the outbox: rows written in the same transaction as the change, sent later by Notifications.
+  `JobLease` stops two worker instances running the same job. `PublicHoliday` feeds the payment-date checks.
 - Users authenticate with Entra ID; `AppUser.ExternalId` holds the Entra object id. No passwords are stored.
 
 ## Getting started
@@ -53,6 +60,23 @@ dotnet run --project src/Services/Client/PayOps.Client.Api   # http://localhost:
   Lists take `search`, `isActive`, `page`, `pageSize` (default 50, max 200). Errors are RFC 9457 problem details.
 - A new API key is returned once, in the create response; it can't be retrieved again.
 - Container: `docker build -f src/Services/Client/PayOps.Client.Api/Dockerfile -t payops-client-api .`
+
+## Batch File API
+```bash
+dotnet user-secrets set ConnectionStrings:PayOps "<connection string>" -p src/Services/BatchFile/PayOps.BatchFile.Api
+dotnet run --project src/Services/BatchFile/PayOps.BatchFile.Api   # http://localhost:5180
+```
+- Clients send their API key (from the Client API) in `X-Api-Key`. A primary's key may submit for any of its secondaries.
+  - `POST /api/batches` (JSON), `POST /api/batches/xml` (legacy `BulkPaymentXml`, checked against the legacy XSD),
+    `POST /api/batches/validate` (either format, nothing stored), `GET /api/batches`, `GET /api/batches/{id}`, `GET /api/batches/{id}/rejections`.
+  - Errors are per field (`payments[12].accountNumber`). Resending an accepted batch returns 409 with `batchId`.
+- Staff (Entra): `GET /api/uploads` and `GET /api/public-holidays`, `/api/billing-rates` need `PayOps.Reader`, `PayOps.Operator`
+  or `PayOps.ClientAdmin`; changing holidays and rates needs `PayOps.Operator`.
+- Rules (legacy plus TwoDay): footer records must match; footer total is the payment sum or the sum plus fees; SDV/RTL/DW
+  not in the past, OneDay after today, TwoDay at least two business days ahead; never a Sunday or public holiday.
+  Dates use `BatchFile:TimeZone` (Africa/Johannesburg). Limits: `BatchFile:MaxRecords` (50,000), `BatchFile:MaxRequestBytes` (10 MB).
+  Allowed service types: `BatchFile:AllowedServiceTypes` (SDV, OneDay, TwoDay).
+- Container: `docker build -f src/Services/BatchFile/PayOps.BatchFile.Api/Dockerfile -t payops-batchfile-api .`
 
 ## Migrations
 Connection strings are never committed. The design-time tools read `PAYOPS_CONNECTION`.

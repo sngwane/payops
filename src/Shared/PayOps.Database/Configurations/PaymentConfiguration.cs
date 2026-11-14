@@ -43,6 +43,7 @@ public class PaymentSummaryConfiguration : IEntityTypeConfiguration<PaymentSumma
         builder.Property(e => e.RejectionBranchCode).HasMaxLength(10);
         builder.Property(e => e.RejectionAccountNumber).HasMaxLength(20);
         builder.Property(e => e.UniqueReference).HasMaxLength(100);
+        builder.Property(e => e.FeeTotal).HasDefaultValue(0m);
         builder.Property(e => e.ReconStatusId).HasDefaultValue((byte)ReconStatusCode.Unreconciled).HasSentinel((byte)0);
         builder.Property(e => e.CreatedDate).HasDefaultValueSql("SYSUTCDATETIME()");
         builder.HasIndex(e => e.UniqueReference).IsUnique();

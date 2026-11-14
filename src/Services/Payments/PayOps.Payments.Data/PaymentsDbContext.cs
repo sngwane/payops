@@ -17,7 +17,8 @@ public class PaymentsDbContext(DbContextOptions<PaymentsDbContext> options) : Db
         typeof(ServiceTypeConfiguration), typeof(ApprovalStatusConfiguration), typeof(AppUserConfiguration),
         typeof(PrimaryClientConfiguration), typeof(SecondaryClientConfiguration), typeof(BankConfiguration),
         typeof(PaymentBatchConfiguration), typeof(PaymentSummaryConfiguration), typeof(PaymentSummaryCommentConfiguration),
-        typeof(PaymentRecordConfiguration), typeof(PaymentRejectionConfiguration), typeof(PaymentRecordStatusHistoryConfiguration)
+        typeof(PaymentRecordConfiguration), typeof(PaymentRejectionConfiguration), typeof(PaymentRecordStatusHistoryConfiguration),
+        typeof(BatchContactConfiguration)
     ];
 
     public DbSet<PaymentBatch> PaymentBatches => Set<PaymentBatch>();

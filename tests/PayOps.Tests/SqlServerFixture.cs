@@ -33,6 +33,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public ClientDbContext CreateClientContext()
         => new(new DbContextOptionsBuilder<ClientDbContext>().UseSqlServer(ConnectionString).Options);
 
+    public PayOps.BatchFile.Data.BatchFileDbContext CreateBatchFileContext()
+        => new(new DbContextOptionsBuilder<PayOps.BatchFile.Data.BatchFileDbContext>().UseSqlServer(ConnectionString).Options);
+
     public PaymentsDbContext CreatePaymentsContext()
         => new(new DbContextOptionsBuilder<PaymentsDbContext>().UseSqlServer(ConnectionString).Options);
 }

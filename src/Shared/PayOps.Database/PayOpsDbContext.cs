@@ -27,6 +27,12 @@ public class PayOpsDbContext(DbContextOptions<PayOpsDbContext> options) : DbCont
     public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
     public DbSet<PaymentRejection> PaymentRejections => Set<PaymentRejection>();
     public DbSet<PaymentRecordStatusHistory> PaymentRecordStatusHistories => Set<PaymentRecordStatusHistory>();
+    public DbSet<BatchUpload> BatchUploads => Set<BatchUpload>();
+    public DbSet<PublicHoliday> PublicHolidays => Set<PublicHoliday>();
+    public DbSet<BillingRate> BillingRates => Set<BillingRate>();
+    public DbSet<BatchContact> BatchContacts => Set<BatchContact>();
+    public DbSet<NotificationMessage> NotificationMessages => Set<NotificationMessage>();
+    public DbSet<JobLease> JobLeases => Set<JobLease>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         => PayOpsConventions.Apply(configurationBuilder);
