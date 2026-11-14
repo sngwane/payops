@@ -208,6 +208,17 @@ public class LegacyImportTests(LegacyImportFixture fixture) : IClassFixture<Lega
     }
 
     [Fact]
+    public async Task Profile_script_runs_against_the_legacy_schema()
+    {
+        var (legacy, _) = await fixture.CreateDatabasesAsync();
+        await LegacyImportFixture.ExecuteAsync(legacy, SampleData);
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(dir!.FullName, "PayOps.slnx"))) dir = dir.Parent;
+
+        await LegacyImportFixture.ExecuteAsync(legacy, await File.ReadAllTextAsync(Path.Combine(dir.FullName, "deploy", "legacy-import", "profile-legacy.sql")));
+    }
+
+    [Fact]
     public async Task Clean_legacy_data_reconciles_exactly()
     {
         var (legacy, payOps) = await fixture.CreateDatabasesAsync();
