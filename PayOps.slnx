@@ -16,6 +16,9 @@
     <Project Path="src/Shared/PayOps.Database/PayOps.Database.csproj" />
     <Project Path="src/Shared/PayOps.ServiceDefaults/PayOps.ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/PayOps.LegacyImport/PayOps.LegacyImport.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PayOps.Tests/PayOps.Tests.csproj" />
   </Folder>

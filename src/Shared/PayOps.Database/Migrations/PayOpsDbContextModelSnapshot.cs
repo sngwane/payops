@@ -204,6 +204,9 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -214,6 +217,10 @@ namespace PayOps.Database.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.ToTable("Bank", (string)null);
                 });
@@ -253,10 +260,17 @@ namespace PayOps.Database.Migrations
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<long>("RunningSequence")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("BankId", "ClientProfileNumber")
                         .IsUnique();
@@ -590,6 +604,9 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ModifiedDate")
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)");
@@ -610,6 +627,10 @@ namespace PayOps.Database.Migrations
                     b.HasIndex("PrimaryClientId", "AccountTypeId")
                         .IsUnique()
                         .HasFilter("[IsActive] = 1");
+
+                    b.HasIndex("PrimaryClientId", "AccountTypeId", "LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.ToTable("ClientBankAccount", (string)null);
                 });
@@ -761,6 +782,9 @@ namespace PayOps.Database.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -799,6 +823,10 @@ namespace PayOps.Database.Migrations
                     b.HasIndex("BatchStatusId");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("Reference")
                         .IsUnique();
@@ -893,6 +921,9 @@ namespace PayOps.Database.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ModifiedDate")
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)");
@@ -919,6 +950,10 @@ namespace PayOps.Database.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BankFileReference");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("PaymentSummaryId");
 
@@ -1025,6 +1060,9 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("datetime2(3)")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ModifiedDate")
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)");
@@ -1051,6 +1089,10 @@ namespace PayOps.Database.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BankFileReference");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("PaymentBatchId");
 
@@ -1089,6 +1131,14 @@ namespace PayOps.Database.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
+
+                    b.Property<string>("LegacyBatchId")
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("ModifiedDate")
                         .HasPrecision(3)
@@ -1158,6 +1208,12 @@ namespace PayOps.Database.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("LegacyBatchId");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
+
                     b.HasIndex("PaymentBatchId");
 
                     b.HasIndex("PaymentDate");
@@ -1209,12 +1265,19 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("datetime2(3)")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<int>("PaymentSummaryId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("PaymentSummaryId");
 
@@ -1242,6 +1305,9 @@ namespace PayOps.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
 
                     b.Property<string>("LogoFileName")
                         .HasMaxLength(255)
@@ -1271,6 +1337,10 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("UniqueClientId")
                         .IsUnique();
@@ -1412,6 +1482,9 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ModifiedDate")
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)");
@@ -1441,6 +1514,10 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LegacyId")
+                        .IsUnique()
+                        .HasFilter("[LegacyId] IS NOT NULL");
 
                     b.HasIndex("PrimaryClientId");
 

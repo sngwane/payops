@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\PayOps.Database\PayOps.Database.csproj" />
+    <ProjectReference Include="..\..\src\Services\Client\PayOps.Client.Data\PayOps.Client.Data.csproj" />
+  </ItemGroup>
+
+</Project>

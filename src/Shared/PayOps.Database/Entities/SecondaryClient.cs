@@ -4,6 +4,7 @@ namespace PayOps.Database.Entities;
 public class SecondaryClient
 {
     public int Id { get; set; }
+    public int? LegacyId { get; set; }
     public int PrimaryClientId { get; set; }
     public string UniqueClientId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;

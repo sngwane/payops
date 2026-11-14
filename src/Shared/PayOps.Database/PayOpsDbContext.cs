@@ -1,3 +1,4 @@
+using PayOps.Database.Configurations;
 using Microsoft.EntityFrameworkCore;
 using PayOps.Database.Entities;
 
@@ -38,5 +39,8 @@ public class PayOpsDbContext(DbContextOptions<PayOpsDbContext> options) : DbCont
         => PayOpsConventions.Apply(configurationBuilder);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(PayOpsDbContext).Assembly);
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(PayOpsDbContext).Assembly);
+        LegacyKeyConfiguration.Apply(modelBuilder);
+    }
 }

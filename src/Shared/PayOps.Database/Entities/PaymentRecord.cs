@@ -4,6 +4,7 @@ namespace PayOps.Database.Entities;
 public class PaymentRecord
 {
     public long Id { get; set; }
+    public int? LegacyId { get; set; }
     public int PaymentSummaryId { get; set; }
     public string? BankFileReference { get; set; }
     public string EmployeeCode { get; set; } = string.Empty;
