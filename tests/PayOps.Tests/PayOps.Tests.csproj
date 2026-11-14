@@ -22,6 +22,8 @@
     <ProjectReference Include="..\..\src\Services\Payments\PayOps.Payments.Data\PayOps.Payments.Data.csproj" />
     <ProjectReference Include="..\..\src\Services\Client\PayOps.Client.Data\PayOps.Client.Data.csproj" />
     <ProjectReference Include="..\..\src\Services\Client\PayOps.Client.Api\PayOps.Client.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\BatchFile\PayOps.BatchFile.Data\PayOps.BatchFile.Data.csproj" />
+    <ProjectReference Include="..\..\src\Services\BatchFile\PayOps.BatchFile.Api\PayOps.BatchFile.Api.csproj" />
   </ItemGroup>
 
 </Project>

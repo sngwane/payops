@@ -11,3 +11,21 @@ public enum ServiceTypeCode : byte { SDV = 1, RTL = 2, OneDay = 3, TwoDay = 4, D
 public enum AccountTypeCode : byte { Nominated = 1, Charges = 2 }
 
 public enum ApprovalStatusCode : byte { Pending = 1, Approved = 2, Rejected = 3 }
+
+/// <summary>Format a batch was uploaded in. Stored as tinyint (no lookup table).</summary>
+public enum BatchUploadFormat : byte { Json = 1, Xml = 2 }
+
+/// <summary>What a batch contact is notified about (legacy NotificationInfo sections).</summary>
+public enum ContactPurpose : byte { UploadConfirmation = 1, RejectionConfirmation = 2, FundingConfirmation = 3 }
+
+public enum NotificationType : byte
+{
+    UploadConfirmation = 1,
+    RejectionConfirmation = 2,
+    FundingRequest = 3,
+    PaymentConfirmation = 4,
+    Unreconciled = 5,
+    OperationsAlert = 6
+}
+
+public enum NotificationMessageStatus : byte { Pending = 1, Sent = 2, Failed = 3 }

@@ -135,7 +135,7 @@ public class ClientApiTests(SqlServerFixture fixture) : IDisposable
     }
 }
 
-internal sealed class ClientApiFactory(string connectionString) : WebApplicationFactory<Program>
+internal sealed class ClientApiFactory(string connectionString) : WebApplicationFactory<PayOps.Client.Api.ClientApiMarker>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

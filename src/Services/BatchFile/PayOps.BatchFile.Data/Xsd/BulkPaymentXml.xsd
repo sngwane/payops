@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="BulkPaymentXml" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+  <xs:element name="Contact">
+    <xs:complexType>
+      <xs:attribute name="Name" type="xs:string" />
+      <xs:attribute name="Email" type="xs:string" />
+      <xs:attribute name="CellNumber" type="xs:string" />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="BulkPaymentXml" msdata:IsDataSet="true" msdata:Locale="en-US">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="Contact" />
+        <xs:element name="HeaderInfo">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="UniqueClientId" type="xs:string" minOccurs="1" msdata:Ordinal="0"/>
+              <xs:element name="PaymentDate" type="xs:string" minOccurs="1" msdata:Ordinal="1"/>
+              <xs:element name="RejectionAccountName" type="xs:string" minOccurs="1" msdata:Ordinal="2"/>
+              <xs:element name="RejectionBranchCode" type="xs:string" minOccurs="1" msdata:Ordinal="3"/>
+              <xs:element name="RejectionAccountNumber" type="xs:string" minOccurs="1" msdata:Ordinal="4"/>
+              <xs:element name="UniquePaymentReference" type="xs:string" minOccurs="1" msdata:Ordinal="5"/>
+              <xs:element name="ServiceType" type="xs:string" minOccurs="1" msdata:Ordinal="6"/>
+			   <xs:element name="SequenceNumber" type="xs:string" minOccurs="1" msdata:Ordinal="7"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="NotificationInfo">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="UploadConfirmations" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element ref="Contact" minOccurs="1" maxOccurs="unbounded" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="RejectionConfirmations" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element ref="Contact" minOccurs="1" maxOccurs="unbounded" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="FundingConfirmations" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element ref="Contact" minOccurs="1" maxOccurs="unbounded" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Payments">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Payment" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="EmployeeCode" type="xs:string" minOccurs="1" msdata:Ordinal="0"/>
+                    <xs:element name="EmployeeSurname" type="xs:string" minOccurs="1" msdata:Ordinal="1"/>
+                    <xs:element name="EmployeeFirstname" type="xs:string" minOccurs="1" msdata:Ordinal="2"/>
+                    <xs:element name="EmployeeInitials" type="xs:string" minOccurs="1" msdata:Ordinal="3"/>
+                    <xs:element name="EmployeeIdOrPassport" type="xs:string" minOccurs="1" msdata:Ordinal="4"/>
+                    <xs:element name="EmployeeCell" type="xs:string" minOccurs="1" msdata:Ordinal="5"/>
+                    <xs:element name="EmployeeEmail" type="xs:string" minOccurs="1" msdata:Ordinal="6"/>
+                    <xs:element name="BranchCode" type="xs:string" minOccurs="1" msdata:Ordinal="7"/>
+                    <xs:element name="AccountNumber" type="xs:string" minOccurs="1" msdata:Ordinal="8"/>
+                    <xs:element name="AccountType" type="xs:string" minOccurs="1" msdata:Ordinal="9"/>
+                    <xs:element name="Amount" type="xs:string" minOccurs="1" msdata:Ordinal="10"/>
+                    <xs:element name="BankReference" type="xs:string" minOccurs="1" msdata:Ordinal="11"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="FooterInfo">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="CurrentDate" type="xs:string" minOccurs="1" msdata:Ordinal="0"/>
+              <xs:element name="Records" type="xs:string" minOccurs="1" msdata:Ordinal="1"/>
+              <xs:element name="TotalValue" type="xs:string" minOccurs="1" msdata:Ordinal="2"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

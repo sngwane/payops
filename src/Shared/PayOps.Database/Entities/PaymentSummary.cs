@@ -15,6 +15,9 @@ public class PaymentSummary
     public string UniqueReference { get; set; } = string.Empty;
     public int TotalRecords { get; set; }
     public decimal TotalValue { get; set; }
+
+    /// <summary>Billing fees included in the footer total (TotalValue minus the sum of the payments); 0 when none.</summary>
+    public decimal FeeTotal { get; set; }
     public byte ReconStatusId { get; set; }
     public int? CreatedByUserId { get; set; }
     public DateTime CreatedDate { get; set; }
@@ -26,5 +29,6 @@ public class PaymentSummary
     public ReconStatus ReconStatus { get; set; } = null!;
     public AppUser? CreatedByUser { get; set; }
     public ICollection<PaymentRecord> PaymentRecords { get; set; } = new List<PaymentRecord>();
+    public ICollection<BatchContact> Contacts { get; set; } = new List<BatchContact>();
     public ICollection<PaymentSummaryComment> Comments { get; set; } = new List<PaymentSummaryComment>();
 }
