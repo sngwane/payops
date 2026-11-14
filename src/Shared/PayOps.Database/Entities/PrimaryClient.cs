@@ -11,6 +11,9 @@ public class PrimaryClient
     public bool IsActive { get; set; } = true;
     public DateTime CreatedDate { get; set; }
     public DateTime? ModifiedDate { get; set; }
+    public byte[] RowVersion { get; set; } = [];
 
     public ICollection<SecondaryClient> SecondaryClients { get; set; } = new List<SecondaryClient>();
+    public ICollection<ClientBankAccount> BankAccounts { get; set; } = new List<ClientBankAccount>();
+    public ICollection<ClientApiKey> ApiKeys { get; set; } = new List<ClientApiKey>();
 }

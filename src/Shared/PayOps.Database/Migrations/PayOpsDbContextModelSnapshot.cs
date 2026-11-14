@@ -331,6 +331,140 @@ namespace PayOps.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PayOps.Database.Entities.ClientApiKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte[]>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<string>("KeyPrefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime?>("LastUsedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("PrimaryClientId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int?>("SecondaryClientId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.HasIndex("PrimaryClientId");
+
+                    b.HasIndex("SecondaryClientId");
+
+                    b.ToTable("ClientApiKey", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ClientApiKey_Owner", "([PrimaryClientId] IS NULL AND [SecondaryClientId] IS NOT NULL) OR ([PrimaryClientId] IS NOT NULL AND [SecondaryClientId] IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.ClientBankAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte>("AccountTypeId")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("BranchCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("GlAccountNumber")
+                        .HasMaxLength(20)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("PrimaryClientId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountTypeId");
+
+                    b.HasIndex("PrimaryClientId", "AccountTypeId")
+                        .IsUnique()
+                        .HasFilter("[IsActive] = 1");
+
+                    b.ToTable("ClientBankAccount", (string)null);
+                });
+
             modelBuilder.Entity("PayOps.Database.Entities.PaymentBatch", b =>
                 {
                     b.Property<int>("Id")
@@ -869,6 +1003,12 @@ namespace PayOps.Database.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("UniqueClientId")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -994,6 +1134,15 @@ namespace PayOps.Database.Migrations
 
                     b.Property<int>("PrimaryClientId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("RequiresReview")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("UniqueClientId")
                         .IsRequired()
@@ -1184,6 +1333,42 @@ namespace PayOps.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Bank");
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.ClientApiKey", b =>
+                {
+                    b.HasOne("PayOps.Database.Entities.PrimaryClient", "PrimaryClient")
+                        .WithMany("ApiKeys")
+                        .HasForeignKey("PrimaryClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PayOps.Database.Entities.SecondaryClient", "SecondaryClient")
+                        .WithMany("ApiKeys")
+                        .HasForeignKey("SecondaryClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PrimaryClient");
+
+                    b.Navigation("SecondaryClient");
+                });
+
+            modelBuilder.Entity("PayOps.Database.Entities.ClientBankAccount", b =>
+                {
+                    b.HasOne("PayOps.Database.Entities.AccountType", "AccountType")
+                        .WithMany()
+                        .HasForeignKey("AccountTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PayOps.Database.Entities.PrimaryClient", "PrimaryClient")
+                        .WithMany("BankAccounts")
+                        .HasForeignKey("PrimaryClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AccountType");
+
+                    b.Navigation("PrimaryClient");
                 });
 
             modelBuilder.Entity("PayOps.Database.Entities.PaymentBatch", b =>
@@ -1435,6 +1620,10 @@ namespace PayOps.Database.Migrations
 
             modelBuilder.Entity("PayOps.Database.Entities.PrimaryClient", b =>
                 {
+                    b.Navigation("ApiKeys");
+
+                    b.Navigation("BankAccounts");
+
                     b.Navigation("SecondaryClients");
                 });
 
@@ -1445,6 +1634,8 @@ namespace PayOps.Database.Migrations
 
             modelBuilder.Entity("PayOps.Database.Entities.SecondaryClient", b =>
                 {
+                    b.Navigation("ApiKeys");
+
                     b.Navigation("PaymentSummaries");
                 });
 #pragma warning restore 612, 618

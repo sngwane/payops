@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Client/">
+    <Project Path="src/Services/Client/PayOps.Client.Api/PayOps.Client.Api.csproj" />
+    <Project Path="src/Services/Client/PayOps.Client.Data/PayOps.Client.Data.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Payments/">
     <Project Path="src/Services/Payments/PayOps.Payments.Data/PayOps.Payments.Data.csproj" />
   </Folder>

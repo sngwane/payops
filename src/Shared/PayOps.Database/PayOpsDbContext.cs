@@ -17,6 +17,8 @@ public class PayOpsDbContext(DbContextOptions<PayOpsDbContext> options) : DbCont
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<PrimaryClient> PrimaryClients => Set<PrimaryClient>();
     public DbSet<SecondaryClient> SecondaryClients => Set<SecondaryClient>();
+    public DbSet<ClientApiKey> ClientApiKeys => Set<ClientApiKey>();
+    public DbSet<ClientBankAccount> ClientBankAccounts => Set<ClientBankAccount>();
     public DbSet<Bank> Banks => Set<Bank>();
     public DbSet<BankClientProfile> BankClientProfiles => Set<BankClientProfile>();
     public DbSet<PaymentBatch> PaymentBatches => Set<PaymentBatch>();
