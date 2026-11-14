@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
 using PayOps.BatchFile.Api.Authentication;
@@ -23,9 +23,13 @@ public static class BatchEndpoints
             var body = await ReadBodyAsync(request, ct);
             if (body.Error is not null)
                 return body.Error;
+            var hash = SHA256.HashData(body.Bytes!);
             if (Deserialize(request, body.Bytes!, out var batch) is { } invalid)
+            {
+                await service.RecordUnreadableAsync(user.GetBatchCaller(), BatchUploadFormat.Json, hash, new Dictionary<string, string[]>(invalid.ProblemDetails.Errors), ct);
                 return invalid;
-            return (await service.SubmitAsync(user.GetBatchCaller(), batch!, BatchUploadFormat.Json, SHA256.HashData(body.Bytes!), ct))
+            }
+            return (await service.SubmitAsync(user.GetBatchCaller(), batch!, BatchUploadFormat.Json, hash, ct))
                 .ToCreated(b => $"/api/batches/{b.BatchId}");
         }).Accepts<BatchSubmission>("application/json");
 
@@ -34,7 +38,7 @@ public static class BatchEndpoints
             var body = await ReadBodyAsync(request, ct);
             if (body.Error is not null)
                 return body.Error;
-            return (await service.SubmitXmlAsync(user.GetBatchCaller(), Encoding.UTF8.GetString(body.Bytes!), SHA256.HashData(body.Bytes!), ct))
+            return (await service.SubmitXmlAsync(user.GetBatchCaller(), body.Bytes!, SHA256.HashData(body.Bytes!), ct))
                 .ToCreated(b => $"/api/batches/{b.BatchId}");
         }).Accepts<string>("application/xml", "text/xml");
 
@@ -44,7 +48,7 @@ public static class BatchEndpoints
             if (body.Error is not null)
                 return body.Error;
             if (IsXml(request))
-                return (await service.ValidateXmlAsync(user.GetBatchCaller(), Encoding.UTF8.GetString(body.Bytes!), ct)).ToHttp();
+                return (await service.ValidateXmlAsync(user.GetBatchCaller(), body.Bytes!, ct)).ToHttp();
             if (Deserialize(request, body.Bytes!, out var batch) is { } invalid)
                 return invalid;
             return (await service.ValidateAsync(user.GetBatchCaller(), batch!, ct)).ToHttp();
@@ -90,7 +94,7 @@ public static class BatchEndpoints
     private static IResult TooLarge(long limit)
         => TypedResults.Problem($"The request body may be at most {limit} bytes.", statusCode: StatusCodes.Status413PayloadTooLarge);
 
-    private static IResult? Deserialize(HttpRequest request, byte[] body, out BatchSubmission? batch)
+    private static ValidationProblem? Deserialize(HttpRequest request, byte[] body, out BatchSubmission? batch)
     {
         var options = request.HttpContext.RequestServices.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
         try

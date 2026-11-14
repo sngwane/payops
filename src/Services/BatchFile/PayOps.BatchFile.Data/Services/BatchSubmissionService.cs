@@ -60,7 +60,7 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
             summary.TotalRecords, summary.TotalValue, summary.FeeTotal);
     }
 
-    public async Task<BatchResult<BatchAcceptedDto>> SubmitXmlAsync(BatchCaller caller, string xml, byte[] payloadHash, CancellationToken cancellationToken = default)
+    public async Task<BatchResult<BatchAcceptedDto>> SubmitXmlAsync(BatchCaller caller, byte[] xml, byte[] payloadHash, CancellationToken cancellationToken = default)
     {
         var (batch, errors) = LegacyBatchXml.Parse(xml);
         if (batch is not null)
@@ -69,6 +69,11 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
         await LogRejectedAsync(caller, null, null, BatchUploadFormat.Xml, payloadHash, error, cancellationToken);
         return error;
     }
+
+    /// <summary>Logs an upload that could not be read (e.g. malformed JSON) as a rejected attempt.</summary>
+    public async Task RecordUnreadableAsync(BatchCaller caller, BatchUploadFormat format, byte[] payloadHash, IReadOnlyDictionary<string, string[]> errors,
+        CancellationToken cancellationToken = default)
+        => await LogRejectedAsync(caller, null, null, format, payloadHash, BatchError.Invalid(errors), cancellationToken);
 
     /// <summary>Runs every check without storing anything (not logged).</summary>
     public async Task<BatchResult<BatchValidationDto>> ValidateAsync(BatchCaller caller, BatchSubmission batch, CancellationToken cancellationToken = default)
@@ -79,7 +84,7 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
         return new BatchValidationDto(true, check!.ServiceType.ToString(), batch.Payments.Count, check.PaymentTotal, check.FeeTotal);
     }
 
-    public async Task<BatchResult<BatchValidationDto>> ValidateXmlAsync(BatchCaller caller, string xml, CancellationToken cancellationToken = default)
+    public async Task<BatchResult<BatchValidationDto>> ValidateXmlAsync(BatchCaller caller, byte[] xml, CancellationToken cancellationToken = default)
     {
         var (batch, errors) = LegacyBatchXml.Parse(xml);
         return batch is null ? BatchError.Invalid(errors!) : await ValidateAsync(caller, batch, cancellationToken);

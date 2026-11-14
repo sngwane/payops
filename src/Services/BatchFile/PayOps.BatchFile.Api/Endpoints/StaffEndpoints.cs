@@ -18,7 +18,10 @@ public static class StaffEndpoints
                 .ToHttp()).WithTags("Uploads");
 
         var holidays = api.MapGroup("/public-holidays").WithTags("Public holidays");
-        holidays.MapGet("/", async (ReferenceDataService service, int? year, CancellationToken ct) => TypedResults.Ok(await service.ListHolidaysAsync(year, ct)));
+        holidays.MapGet("/", async Task<IResult> (ReferenceDataService service, int? year, CancellationToken ct)
+            => year is < 1 or > 9999
+                ? TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["year"] = ["Must be between 1 and 9999."] })
+                : TypedResults.Ok(await service.ListHolidaysAsync(year, ct)));
         holidays.MapPost("/", async (PublicHolidayRequest request, ReferenceDataService service, CancellationToken ct)
             => (await service.CreateHolidayAsync(request, ct)).ToCreated(h => $"/api/public-holidays/{h.Id}")).Write();
         holidays.MapPut("/{id:int}", async (int id, PublicHolidayRequest request, ReferenceDataService service, CancellationToken ct)

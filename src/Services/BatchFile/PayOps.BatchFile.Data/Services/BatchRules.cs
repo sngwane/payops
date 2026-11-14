@@ -6,10 +6,10 @@ namespace PayOps.BatchFile.Data.Services;
 /// <summary>Field and business rules for a batch, ported from legacy BulkPaymentModule.UploadBatch and the XmlObjects field validators.</summary>
 internal static partial class BatchRules
 {
-    [GeneratedRegex(@"^[a-zA-Z0-9 \-_().]*$")]
+    [GeneratedRegex(@"\A[a-zA-Z0-9 \-_().]*\z")]
     private static partial Regex PlainText();
 
-    [GeneratedRegex(@"^[0-9]+$")]
+    [GeneratedRegex(@"\A[0-9]+\z")]
     private static partial Regex Digits();
 
     public static ServiceTypeCode? ParseServiceType(string? value) => value?.Trim().ToUpperInvariant() switch

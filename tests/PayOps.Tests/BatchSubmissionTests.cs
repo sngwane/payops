@@ -175,17 +175,59 @@ public class BatchSubmissionTests(SqlServerFixture fixture)
         var service = BatchTestData.Service(db);
         var xml = BatchTestData.Xml(client.UniqueClientId, TestData.Unique("X"));
 
-        var accepted = await service.SubmitXmlAsync(caller, xml, Hash(xml));
+        var accepted = await service.SubmitXmlAsync(caller, Encoding.UTF8.GetBytes(xml), Hash(xml));
         Assert.True(accepted.IsSuccess, accepted.Error?.Message);
         await using var check = fixture.CreatePayOpsContext();
         Assert.Equal(3, await check.BatchContacts.CountAsync(c => c.PaymentSummaryId == accepted.Value!.BatchId));
 
-        var notXml = await service.SubmitXmlAsync(caller, "<BulkPaymentXml><Unknown/></BulkPaymentXml>", Hash("n"));
+        var notXml = await service.SubmitXmlAsync(caller, Encoding.UTF8.GetBytes("<BulkPaymentXml><Unknown/></BulkPaymentXml>"), Hash("n"));
         Assert.Contains("xml", notXml.Error!.Errors!.Keys);
-        var doctype = await service.SubmitXmlAsync(caller, "<!DOCTYPE x [<!ENTITY e SYSTEM \"file:///etc/passwd\">]><BulkPaymentXml>&e;</BulkPaymentXml>", Hash("d"));
+        var doctype = await service.SubmitXmlAsync(caller, Encoding.UTF8.GetBytes("<!DOCTYPE x [<!ENTITY e SYSTEM \"file:///etc/passwd\">]><BulkPaymentXml>&e;</BulkPaymentXml>"), Hash("d"));
         Assert.Contains("xml", doctype.Error!.Errors!.Keys);
-        var badAmount = await service.SubmitXmlAsync(caller, BatchTestData.Xml(client.UniqueClientId, TestData.Unique("X"), amount: "12,50"), Hash("b"));
+        var badAmount = await service.SubmitXmlAsync(caller, Encoding.UTF8.GetBytes(BatchTestData.Xml(client.UniqueClientId, TestData.Unique("X"), amount: "12,50")), Hash("b"));
         Assert.Contains("payments[0].amount", badAmount.Error!.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task Xml_payments_from_every_payments_section_are_read_utf16_is_accepted_and_repeated_headers_are_rejected()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+        var xml = BatchTestData.Xml(client.UniqueClientId, TestData.Unique("X"));
+        var payments = xml[xml.IndexOf("<Payments>", StringComparison.Ordinal)..(xml.IndexOf("</Payments>", StringComparison.Ordinal) + "</Payments>".Length)];
+
+        var twoSections = xml.Replace(payments, payments + payments);
+        var mismatch = await service.ValidateXmlAsync(caller, Encoding.UTF8.GetBytes(twoSections));
+        Assert.Contains("footer.records", mismatch.Error!.Errors!.Keys);
+        var fixedFooter = twoSections.Replace("<Records>1</Records>", "<Records>2</Records>").Replace("<TotalValue>150.25</TotalValue>", "<TotalValue>300.50</TotalValue>");
+        var both = await service.ValidateXmlAsync(caller, Encoding.UTF8.GetBytes(fixedFooter));
+        Assert.True(both.IsSuccess, both.Error?.Message);
+        Assert.Equal(2, both.Value!.Records);
+
+        var header = xml[xml.IndexOf("<HeaderInfo>", StringComparison.Ordinal)..(xml.IndexOf("</HeaderInfo>", StringComparison.Ordinal) + "</HeaderInfo>".Length)];
+        var repeated = await service.ValidateXmlAsync(caller, Encoding.UTF8.GetBytes(xml.Replace(header, header + header)));
+        Assert.Contains("xml", repeated.Error!.Errors!.Keys);
+
+        var utf16 = Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes(xml.Replace("utf-8", "utf-16"))).ToArray();
+        var accepted = await service.SubmitXmlAsync(caller, utf16, SHA256.HashData(utf16));
+        Assert.True(accepted.IsSuccess, accepted.Error?.Message);
+    }
+
+    [Fact]
+    public async Task Trailing_newlines_are_rejected_in_numbers_and_text()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var batch = BatchTestData.Batch(client.UniqueClientId);
+        batch = batch with { Payments = [batch.Payments[0] with { AccountNumber = "62000000002\n", BankReference = "SAL1\n" }, batch.Payments[1]] };
+        await using var db = fixture.CreateBatchFileContext();
+
+        var result = await BatchTestData.Service(db).ValidateAsync(caller, batch);
+
+        Assert.Contains("payments[0].accountNumber", result.Error!.Errors!.Keys);
+        Assert.Contains("payments[0].bankReference", result.Error.Errors.Keys);
     }
 
     [Fact]

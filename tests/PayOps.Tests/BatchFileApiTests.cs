@@ -92,12 +92,22 @@ public class BatchFileApiTests(SqlServerFixture fixture) : IDisposable
 
         var malformed = await http.PostAsync("/api/batches", new StringContent("{ \"header\": ", Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+        var log = (await Staff(PayOpsRoles.Reader).GetFromJsonAsync<PagedResult<BatchUploadDto>>($"/api/uploads?uniqueClientId={client.UniqueClientId}&isAccepted=false"))!;
+        Assert.Contains(log.Items, u => u.Format == "Json" && u.Errors is { Count: > 0 });
     }
 
     [Fact]
     public async Task Staff_endpoints_need_roles_and_operators_maintain_holidays_and_billing_rates()
     {
         Assert.Equal(HttpStatusCode.Unauthorized, (await Staff().GetAsync("/api/uploads")).StatusCode);
+        await using (var db = fixture.CreatePayOpsContext())
+        {
+            var (_, key, _) = await BatchTestData.AddClientWithKeyAsync(db, primaryKey: true);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await WithKey(key).GetAsync("/api/uploads")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await WithKey(key).GetAsync("/api/public-holidays")).StatusCode);
+        }
+        Assert.Equal(HttpStatusCode.BadRequest, (await Staff(PayOpsRoles.Reader).GetAsync("/api/public-holidays?year=0")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Staff(PayOpsRoles.Reader).GetAsync("/api/public-holidays?year=10000")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await Staff("Other").GetAsync("/api/uploads")).StatusCode);
         var reader = Staff(PayOpsRoles.Reader);
         Assert.Equal(HttpStatusCode.OK, (await reader.GetAsync("/api/uploads?isAccepted=false")).StatusCode);

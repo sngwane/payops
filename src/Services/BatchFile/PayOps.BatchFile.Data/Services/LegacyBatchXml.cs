@@ -12,6 +12,17 @@ public static class LegacyBatchXml
     private static readonly string[] DateFormats = ["yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-ddTHH:mm:ss", "yyyy/MM/dd HH:mm:ss"];
 
     public static (BatchSubmission? Batch, IReadOnlyDictionary<string, string[]>? Errors) Parse(string xml)
+        => Parse(XmlReaderFactory(new StringReader(xml)));
+
+    /// <summary>Parses raw upload bytes so the reader detects the encoding (BOM / XML declaration), e.g. UTF-16.</summary>
+    public static (BatchSubmission? Batch, IReadOnlyDictionary<string, string[]>? Errors) Parse(byte[] xml)
+        => Parse(XmlReaderFactory(new MemoryStream(xml, writable: false)));
+
+    private static Func<XmlReaderSettings, XmlReader> XmlReaderFactory(TextReader reader) => settings => XmlReader.Create(reader, settings);
+
+    private static Func<XmlReaderSettings, XmlReader> XmlReaderFactory(Stream stream) => settings => XmlReader.Create(stream, settings);
+
+    private static (BatchSubmission? Batch, IReadOnlyDictionary<string, string[]>? Errors) Parse(Func<XmlReaderSettings, XmlReader> createReader)
     {
         var errors = new ValidationErrors();
         XDocument document;
@@ -25,7 +36,7 @@ public static class LegacyBatchXml
                 Schemas = Schemas
             };
             settings.ValidationEventHandler += (_, e) => errors.Add("xml", $"Line {e.Exception.LineNumber}: {e.Message}");
-            using var reader = XmlReader.Create(new StringReader(xml), settings);
+            using var reader = createReader(settings);
             document = XDocument.Load(reader);
         }
         catch (XmlException ex)
@@ -37,9 +48,14 @@ public static class LegacyBatchXml
             return (null, errors.ToDictionary());
 
         var root = document.Root!;
+        foreach (var single in new[] { "HeaderInfo", "FooterInfo", "NotificationInfo" })
+            if (root.Elements(single).Count() > 1)
+                errors.Add("xml", $"{single} may appear only once.");
+        if (errors.Any)
+            return (null, errors.ToDictionary());
         var header = root.Element("HeaderInfo");
         var footer = root.Element("FooterInfo");
-        var payments = root.Element("Payments")?.Elements("Payment").ToList() ?? [];
+        var payments = root.Elements("Payments").SelectMany(p => p.Elements("Payment")).ToList();
         if (header is null)
             errors.Add("header", "HeaderInfo is required.");
         if (footer is null)
