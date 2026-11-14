@@ -7,6 +7,7 @@ namespace PayOps.Database.Entities;
 public class PaymentRejection
 {
     public long Id { get; set; }
+    public int? LegacyId { get; set; }
     public long PaymentRecordId { get; set; }
     public int? PaymentBatchId { get; set; }
     public byte? ServiceTypeId { get; set; }

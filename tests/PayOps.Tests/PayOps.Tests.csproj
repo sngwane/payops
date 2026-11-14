@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Services\Client\PayOps.Client.Api\PayOps.Client.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\BatchFile\PayOps.BatchFile.Data\PayOps.BatchFile.Data.csproj" />
     <ProjectReference Include="..\..\src\Services\BatchFile\PayOps.BatchFile.Api\PayOps.BatchFile.Api.csproj" />
+    <ProjectReference Include="..\..\tools\PayOps.LegacyImport\PayOps.LegacyImport.csproj" />
   </ItemGroup>
 
 </Project>

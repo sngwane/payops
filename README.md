@@ -78,6 +78,33 @@ dotnet run --project src/Services/BatchFile/PayOps.BatchFile.Api   # http://loca
   Allowed service types: `BatchFile:AllowedServiceTypes` (SDV, OneDay, TwoDay).
 - Container: `docker build -f src/Services/BatchFile/PayOps.BatchFile.Api/Dockerfile -t payops-batchfile-api .`
 
+## Legacy data import
+
+`tools/PayOps.LegacyImport` copies the legacy BulkPayments data into PayOps: clients, bank accounts, access keys (stored as SHA-256 hashes only), bank runs, batches, payments, rejections, comments, public holidays, billing rates and bank profiles. It only reads legacy. Imported rows keep their legacy key in `LegacyId`, so it can be re-run until cut-over; rows already copied are updated, not duplicated.
+
+```bash
+# 1. read-only profile of the legacy data
+sqlcmd -C -I -b -S <server> -d BulkPayments -i deploy/legacy-import/profile-legacy.sql
+# 2. connection strings come from the environment, never the command line
+export LEGACY_CONNECTION_STRING="Server=...;Database=BulkPayments;..."
+export PAYOPS_CONNECTION_STRING="Server=...;Database=PayOps;..."
+# 3. dry run: full import, report written, everything rolled back
+dotnet run --project tools/PayOps.LegacyImport -- --dry-run
+# 4. real run (back up PayOps first)
+dotnet run --project tools/PayOps.LegacyImport
+```
+
+Each run writes `report.md`, `issues.csv` (every skipped or repaired row and why), `batch-differences.csv` and `clients.csv` (legacy vs PayOps counts and amounts). Exit code 0 means every count and total matches.
+
+Bad legacy rows:
+- A missing required text value is stored as `(missing)`.
+- Over-long text is cut to fit.
+- Duplicate client IDs and broken links are skipped.
+- A batch with no matching secondary client gets an inactive placeholder under `LEGACY-UNMATCHED`, flagged `RequiresReview`.
+- Empty or duplicate references and sequence numbers become `LEGACY-<HeaderId>` and `-<HeaderId>`.
+
+All of these appear in `issues.csv`. Billing rates: only the latest rate per service type is imported. Client notification contacts (`NotificationXml`) wait for the Notifications API.
+
 ## Migrations
 Connection strings are never committed. The design-time tools read `PAYOPS_CONNECTION`.
 ```bash

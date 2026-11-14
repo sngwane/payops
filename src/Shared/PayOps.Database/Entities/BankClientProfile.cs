@@ -4,6 +4,7 @@ namespace PayOps.Database.Entities;
 public class BankClientProfile
 {
     public int Id { get; set; }
+    public int? LegacyId { get; set; }
     public int BankId { get; set; }
     public string ClientProfileNumber { get; set; } = string.Empty;
     public string ClientIdentifier { get; set; } = string.Empty;

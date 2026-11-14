@@ -4,6 +4,8 @@ namespace PayOps.Database.Entities;
 public class PaymentSummary
 {
     public int Id { get; set; }
+    public int? LegacyId { get; set; }
+    public string? LegacyBatchId { get; set; }
     public int? PaymentBatchId { get; set; }
     public int SecondaryClientId { get; set; }
     public byte ServiceTypeId { get; set; }
