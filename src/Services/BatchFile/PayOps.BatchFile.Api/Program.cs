@@ -15,7 +15,7 @@ builder.Services.Configure<BatchFileOptions>(builder.Configuration.GetSection(Ba
 builder.Services.AddClientData(connectionString);
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddBatchFileAuth(builder.Configuration, builder.Environment);
-builder.Services.AddPayOpsApiDefaults().AddDbContextCheck<BatchFileDbContext>();
+builder.Services.AddPayOpsApiDefaults(o => o.AddApiKeySecurityScheme()).AddDbContextCheck<BatchFileDbContext>();
 
 var app = builder.Build();
 
