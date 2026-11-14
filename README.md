@@ -13,7 +13,7 @@ src/Services/Client/PayOps.Client.Data        Client API context + LINQ commands
 src/Services/Client/PayOps.Client.Api         Client API (ASP.NET Core minimal API, Entra ID auth)
 src/Services/BatchFile/PayOps.BatchFile.Data  Batch File context, legacy XML reader, batch rules, submission service
 src/Services/BatchFile/PayOps.BatchFile.Api   Batch File API (client X-Api-Key uploads + staff endpoints)
-src/Shared/PayOps.ServiceDefaults             Shared Entra auth, roles, ProblemDetails, OpenAPI, /health
+src/Shared/PayOps.ServiceDefaults             Shared Entra auth, roles, ProblemDetails, OpenAPI + Swagger UI, /health
 src/Services/Payments/PayOps.Payments.Data    Payments API context (subset of tables) + read-only LINQ queries
 tests/PayOps.Tests                            Integration tests against SQL Server 2022 in Docker
 deploy/docker-compose.yml                     SQL Server container for local / single-server use
@@ -51,7 +51,7 @@ dotnet test            # needs Docker; starts SQL Server 2022 automatically
 ## Client API
 ```bash
 dotnet user-secrets set ConnectionStrings:PayOps "<connection string>" -p src/Services/Client/PayOps.Client.Api
-dotnet run --project src/Services/Client/PayOps.Client.Api   # http://localhost:5101, OpenAPI at /openapi/v1.json
+dotnet run --project src/Services/Client/PayOps.Client.Api   # http://localhost:5101, Swagger UI at /swagger (Development)
 ```
 - Development runs without sign-in (every caller is a client admin). Everywhere else set `Authentication:TenantId`
   and `Authentication:Audience` for the Entra app registration; tokens need the `PayOps.ClientAdmin` (read/write)
@@ -64,7 +64,7 @@ dotnet run --project src/Services/Client/PayOps.Client.Api   # http://localhost:
 ## Batch File API
 ```bash
 dotnet user-secrets set ConnectionStrings:PayOps "<connection string>" -p src/Services/BatchFile/PayOps.BatchFile.Api
-dotnet run --project src/Services/BatchFile/PayOps.BatchFile.Api   # http://localhost:5180
+dotnet run --project src/Services/BatchFile/PayOps.BatchFile.Api   # http://localhost:5180, Swagger UI at /swagger (Development)
 ```
 - Clients send their API key (from the Client API) in `X-Api-Key`. A primary's key may submit for any of its secondaries.
   - `POST /api/batches` (JSON), `POST /api/batches/xml` (legacy `BulkPaymentXml`, checked against the legacy XSD),
