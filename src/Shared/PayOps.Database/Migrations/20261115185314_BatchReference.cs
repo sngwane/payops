@@ -18,7 +18,8 @@ namespace PayOps.Database.Migrations
                 nullable: false,
                 defaultValue: "");
 
-            migrationBuilder.Sql("UPDATE [PaymentSummary] SET [ClientReference] = [UniqueReference] WHERE [ClientReference] = N'';");
+            // EXEC defers compilation, so the idempotent script (one batch) doesn't fail on the column added just above.
+            migrationBuilder.Sql("EXEC(N'UPDATE [PaymentSummary] SET [ClientReference] = [UniqueReference]');");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PaymentSummary_SecondaryClientId_ClientReference",
