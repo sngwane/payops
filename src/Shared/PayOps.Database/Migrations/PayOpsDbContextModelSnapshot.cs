@@ -1117,6 +1117,12 @@ namespace PayOps.Database.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ClientReference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int?>("CreatedByUserId")
                         .HasColumnType("int");
 
@@ -1224,6 +1230,8 @@ namespace PayOps.Database.Migrations
 
                     b.HasIndex("UniqueReference")
                         .IsUnique();
+
+                    b.HasIndex("SecondaryClientId", "ClientReference");
 
                     b.HasIndex("SecondaryClientId", "SequenceNumber")
                         .IsUnique();

@@ -14,7 +14,11 @@ public class PaymentSummary
     public string? RejectionBranchCode { get; set; }
     public string? RejectionAccountNumber { get; set; }
     public long SequenceNumber { get; set; }
+    /// <summary>PayOps' own unique key for the batch (a GUID; for legacy batches the legacy Header.BatchId).</summary>
     public string UniqueReference { get; set; } = string.Empty;
+
+    /// <summary>The UniquePaymentReference the client sent. Not unique: legacy clients send their client ID every time.</summary>
+    public string ClientReference { get; set; } = string.Empty;
     public int TotalRecords { get; set; }
     public decimal TotalValue { get; set; }
 

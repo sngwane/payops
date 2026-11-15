@@ -26,20 +26,20 @@ public sealed record BatchContactInfo(string Name, string? Email, string? CellNu
 /// <summary>The client calling with an API key; a primary client may submit for any of its secondary clients.</summary>
 public sealed record BatchCaller(bool IsPrimary, int ClientId, string UniqueClientId, int ApiKeyId);
 
-public sealed record BatchAcceptedDto(int BatchId, string UniqueReference, string UniqueClientId, DateOnly PaymentDate, string ServiceType,
+public sealed record BatchAcceptedDto(int BatchId, string UniqueReference, string ClientReference, string UniqueClientId, DateOnly PaymentDate, string ServiceType,
     int Records, decimal TotalValue, decimal FeeTotal);
 
 public sealed record BatchValidationDto(bool IsValid, string ServiceType, int Records, decimal TotalValue, decimal FeeTotal);
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
 
-public sealed record BatchListQuery(DateOnly? From = null, DateOnly? To = null, string? UniqueReference = null, int Page = 1, int PageSize = BatchListQuery.DefaultPageSize)
+public sealed record BatchListQuery(DateOnly? From = null, DateOnly? To = null, string? UniqueReference = null, string? ClientReference = null, int Page = 1, int PageSize = BatchListQuery.DefaultPageSize)
 {
     public const int DefaultPageSize = 50;
     public const int MaxPageSize = 200;
 }
 
-public sealed record BatchSummaryDto(int Id, string UniqueReference, string UniqueClientId, string ServiceType, DateOnly PaymentDate,
+public sealed record BatchSummaryDto(int Id, string UniqueReference, string ClientReference, string UniqueClientId, string ServiceType, DateOnly PaymentDate,
     long SequenceNumber, int Records, decimal TotalValue, decimal FeeTotal, string ReconStatus, DateTime CreatedDate);
 
 public sealed record TransactionStatusCount(string Status, int Count, decimal Value);

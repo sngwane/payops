@@ -21,6 +21,8 @@ public sealed class BatchQueries(BatchFileDbContext db)
             batches = batches.Where(s => s.PaymentDate <= to);
         if (!string.IsNullOrWhiteSpace(query.UniqueReference))
             batches = batches.Where(s => s.UniqueReference == query.UniqueReference);
+        if (!string.IsNullOrWhiteSpace(query.ClientReference))
+            batches = batches.Where(s => s.ClientReference == query.ClientReference);
         var total = await batches.CountAsync(cancellationToken);
         var items = await ProjectSummary(batches.OrderByDescending(s => s.Id).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize))
             .ToListAsync(cancellationToken);
@@ -95,7 +97,7 @@ public sealed class BatchQueries(BatchFileDbContext db)
             : db.PaymentSummaries.AsNoTracking().Where(s => s.SecondaryClientId == caller.ClientId);
 
     private static IQueryable<BatchSummaryDto> ProjectSummary(IQueryable<PaymentSummary> batches)
-        => batches.Select(s => new BatchSummaryDto(s.Id, s.UniqueReference, s.SecondaryClient.UniqueClientId, s.ServiceType.Name, s.PaymentDate,
+        => batches.Select(s => new BatchSummaryDto(s.Id, s.UniqueReference, s.ClientReference, s.SecondaryClient.UniqueClientId, s.ServiceType.Name, s.PaymentDate,
             s.SequenceNumber, s.TotalRecords, s.TotalValue, s.FeeTotal, s.ReconStatus.Name, s.CreatedDate));
 
     internal static BatchError? Paging(int page, int pageSize, int maxPageSize)

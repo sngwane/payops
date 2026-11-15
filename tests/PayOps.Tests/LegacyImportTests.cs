@@ -107,7 +107,7 @@ public class LegacyImportTests(LegacyImportFixture fixture) : IClassFixture<Lega
             ('NOPE', 'E5', 'Nobody', '250655', '62000000005', '1', 10.00, 1, '2026-10-01');
         INSERT Rejections (BankRunId, AccountName, AccountNumber, BranchCode, Amount, ServiceTypeId, TransactionStatusId, TransactionId, RejectionReason) VALUES
             (1, 'Mokoena', '62000000001', '250655', 100.00, 1, 5, 1, 'Account closed');
-        INSERT HeaderComment (HeaderId, Comment, CommentDate) VALUES (1, 'Funded late', '2026-10-01');
+        INSERT HeaderComment (HeaderId, Comment, CommentDate) VALUES (1, 'Funded late', '2026-10-01'), (99, 'Batch deleted long ago', '2018-01-01');
         """;
 
     private static async Task<ImportReport> ImportAsync(string legacy, string payOps, bool dryRun = false)
@@ -146,15 +146,18 @@ public class LegacyImportTests(LegacyImportFixture fixture) : IClassFixture<Lega
         Assert.DoesNotContain("acme-access", key.KeyPrefix);
 
         var batch1 = await db.PaymentSummaries.Include(s => s.PaymentRecords).SingleAsync(s => s.LegacyId == 1);
-        Assert.Equal(("REF-1", 300m, 2, "B-1"), (batch1.UniqueReference, batch1.TotalValue, batch1.PaymentRecords.Count, batch1.LegacyBatchId));
+        Assert.Equal(("B-1", "REF-1", 300m, 2, "B-1"), (batch1.UniqueReference, batch1.ClientReference, batch1.TotalValue, batch1.PaymentRecords.Count, batch1.LegacyBatchId));
         Assert.NotNull(batch1.PaymentBatchId);
         Assert.Contains(batch1.PaymentRecords, r => r.Surname == "(missing)");
         var batch2 = await db.PaymentSummaries.SingleAsync(s => s.LegacyId == 2);
-        Assert.Equal(("LEGACY-2", -2L, placeholder.Id), (batch2.UniqueReference, batch2.SequenceNumber, batch2.SecondaryClientId));
+        Assert.Equal(("B-2", "REF-1", -2L, placeholder.Id), (batch2.UniqueReference, batch2.ClientReference, batch2.SequenceNumber, batch2.SecondaryClientId));
 
         Assert.Equal(3, await db.PaymentRecordStatusHistories.CountAsync());
         Assert.Equal(1, await db.PaymentRejections.CountAsync(r => r.LegacyId == 1));
         Assert.Equal(1, await db.PaymentSummaryComments.CountAsync(c => c.LegacyId == 1));
+        Assert.Contains(report.Issues, i => i.LegacyTable == "HeaderComment" && i.LegacyKey == "2" && i.Reason.Contains("no longer exists"));
+        var comments = report.Totals.Single(t => t.Item == "Batch comments");
+        Assert.Equal((1m, 1m), (comments.Legacy, comments.PayOps));
         Assert.Equal(2, await db.PublicHolidays.CountAsync());
         Assert.Equal(3.00m, (await db.BillingRates.SingleAsync()).FeePerRecord);
         Assert.Equal(1, await db.BankClientProfiles.CountAsync(p => p.LegacyId == 1));

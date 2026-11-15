@@ -69,7 +69,7 @@ dotnet run --project src/Services/BatchFile/PayOps.BatchFile.Api   # http://loca
 - Clients send their API key (from the Client API) in `X-Api-Key`. A primary's key may submit for any of its secondaries.
   - `POST /api/batches` (JSON), `POST /api/batches/xml` (legacy `BulkPaymentXml`, checked against the legacy XSD),
     `POST /api/batches/validate` (either format, nothing stored), `GET /api/batches`, `GET /api/batches/{id}`, `GET /api/batches/{id}/rejections`.
-  - Errors are per field (`payments[12].accountNumber`). Resending an accepted batch returns 409 with `batchId`.
+  - Errors are per field (`payments[12].accountNumber`). Each accepted batch gets its own `uniqueReference` (a GUID); the client's `UniquePaymentReference` is kept as `clientReference` and may repeat, as legacy clients send their client ID there. A reused `SequenceNumber` for the same client returns 409 with `batchId`.
 - Staff (Entra): `GET /api/uploads` and `GET /api/public-holidays`, `/api/billing-rates` need `PayOps.Reader`, `PayOps.Operator`
   or `PayOps.ClientAdmin`; changing holidays and rates needs `PayOps.Operator`.
 - Rules (legacy plus TwoDay): footer records must match; footer total is the payment sum or the sum plus fees; SDV/RTL/DW
@@ -101,7 +101,8 @@ Bad legacy rows:
 - Over-long text is cut to fit.
 - Duplicate client IDs and broken links are skipped.
 - A batch with no matching secondary client gets an inactive placeholder under `LEGACY-UNMATCHED`, flagged `RequiresReview`.
-- Empty or duplicate references and sequence numbers become `LEGACY-<HeaderId>` and `-<HeaderId>`.
+- A batch's `UniqueReference` is its legacy `BatchId` (`LEGACY-<HeaderId>` if empty or duplicate); the legacy `UniquePaymentReference` goes to `ClientReference`. Empty or duplicate sequence numbers become `-<HeaderId>`.
+- Comments whose batch no longer exists in legacy `Header` are skipped and left out of the reconciliation.
 
 All of these appear in `issues.csv`. Billing rates: only the latest rate per service type is imported. Client notification contacts (`NotificationXml`) wait for the Notifications API.
 
