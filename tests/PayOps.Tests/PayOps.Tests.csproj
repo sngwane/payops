@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\PayOps.Database\PayOps.Database.csproj" />
     <ProjectReference Include="..\..\src\Services\Payments\PayOps.Payments.Data\PayOps.Payments.Data.csproj" />
+    <ProjectReference Include="..\..\src\Services\Payments\PayOps.Payments.Api\PayOps.Payments.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Client\PayOps.Client.Data\PayOps.Client.Data.csproj" />
     <ProjectReference Include="..\..\src\Services\Client\PayOps.Client.Api\PayOps.Client.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\BatchFile\PayOps.BatchFile.Data\PayOps.BatchFile.Data.csproj" />

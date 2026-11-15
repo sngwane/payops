@@ -14,7 +14,8 @@ src/Services/Client/PayOps.Client.Api         Client API (ASP.NET Core minimal A
 src/Services/BatchFile/PayOps.BatchFile.Data  Batch File context, legacy XML reader, batch rules, submission service
 src/Services/BatchFile/PayOps.BatchFile.Api   Batch File API (client X-Api-Key uploads + staff endpoints)
 src/Shared/PayOps.ServiceDefaults             Shared Entra auth, roles, ProblemDetails, OpenAPI + Swagger UI, /health
-src/Services/Payments/PayOps.Payments.Data    Payments API context (subset of tables) + read-only LINQ queries
+src/Services/Payments/PayOps.Payments.Data    Payments API context (subset of tables), ops queries and commands
+src/Services/Payments/PayOps.Payments.Api     Payments API (ops back office: batches, reconciliation, holds, paid, rejections)
 tests/PayOps.Tests                            Integration tests against SQL Server 2022 in Docker
 deploy/docker-compose.yml                     SQL Server container for local / single-server use
 ```
@@ -77,6 +78,28 @@ dotnet run --project src/Services/BatchFile/PayOps.BatchFile.Api   # http://loca
   Dates use `BatchFile:TimeZone` (Africa/Johannesburg). Limits: `BatchFile:MaxRecords` (50,000), `BatchFile:MaxRequestBytes` (10 MB).
   Allowed service types: `BatchFile:AllowedServiceTypes` (SDV, OneDay, TwoDay).
 - Container: `docker build -f src/Services/BatchFile/PayOps.BatchFile.Api/Dockerfile -t payops-batchfile-api .`
+
+## Payments API
+```bash
+dotnet user-secrets set ConnectionStrings:PayOps "<connection string>" -p src/Services/Payments/PayOps.Payments.Api
+dotnet run --project src/Services/Payments/PayOps.Payments.Api   # http://localhost:5190, Swagger UI at /swagger (Development)
+```
+The ops back office for batches already in PayOps. `PayOps.Reader` (also Operator, Approver, ClientAdmin) can read and export;
+changes need `PayOps.Operator`. Client API keys are not accepted.
+- Batches: `GET /api/batches` (client, primary/secondary client, client/unique reference, service type, payment date range,
+  recon status, on hold, in a bank run, has rejections), `GET /api/batches/{id}` (status counts, hold, bank run, `rowVersion`),
+  `/payments`, `/comments` (GET/POST), `/history` (who changed what, from the temporal history + comments), `GET /api/payments/{id}`.
+- Reconciliation: `POST /api/batches/{id}/reconciliation` (`status`, required `comment`), locked once the batch is in a bank
+  run; Reconciled queues a `FundingConfirmation` notification. `GET /api/reconciliation/unreconciled` is the funding worklist.
+- Holds: `POST /api/batches/{id}/hold` (reason) and `/release` (comment), whole batches only, before a bank run.
+- Paid: `GET /api/paid-away` (today, `Payments:TimeZone`) and `GET /api/paid-history?from=&to=` (at most `Payments:MaxHistoryDays`, 31).
+- Rejections: `GET /api/rejections?status=`, `GET /api/rejections/{id}`, `PUT .../refund-account` and `POST .../confirm`
+  (PendingUnreconciled -> Pending, queues a `RejectionConfirmation` notification).
+- Every list accepts `?format=csv` (or `Accept: text/csv`) and streams all matches.
+- Changes record the staff user: the first change creates their `AppUser` from the Entra token (`oid`); in Development it's `dev.user`.
+  Send the `rowVersion` you read to get 409 instead of overwriting someone else's change.
+- Until cut-over, rerunning the legacy import overwrites recon status, so reconcile in legacy and treat PayOps changes as tests.
+- Container: `docker build -f src/Services/Payments/PayOps.Payments.Api/Dockerfile -t payops-payments-api .`
 
 ## Legacy data import
 

@@ -25,7 +25,8 @@ public enum NotificationType : byte
     FundingRequest = 3,
     PaymentConfirmation = 4,
     Unreconciled = 5,
-    OperationsAlert = 6
+    OperationsAlert = 6,
+    FundingConfirmation = 7
 }
 
 public enum NotificationMessageStatus : byte { Pending = 1, Sent = 2, Failed = 3 }

@@ -1054,6 +1054,13 @@ namespace PayOps.Database.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<int?>("ConfirmedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ConfirmedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
                     b.Property<DateTime>("CreatedDate")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(3)
@@ -1078,6 +1085,12 @@ namespace PayOps.Database.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<byte?>("ServiceTypeId")
                         .HasColumnType("tinyint");
 
@@ -1089,6 +1102,8 @@ namespace PayOps.Database.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BankFileReference");
+
+                    b.HasIndex("ConfirmedByUserId");
 
                     b.HasIndex("LegacyId")
                         .IsUnique()
@@ -1138,12 +1153,30 @@ namespace PayOps.Database.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
+                    b.Property<int?>("HeldByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("HeldDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("HoldReason")
+                        .HasMaxLength(500)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsOnHold")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LegacyBatchId")
                         .HasMaxLength(50)
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ModifiedByUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("ModifiedDate")
@@ -1155,6 +1188,13 @@ namespace PayOps.Database.Migrations
 
                     b.Property<DateOnly>("PaymentDate")
                         .HasColumnType("date");
+
+                    b.Property<int?>("ReconStatusChangedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReconStatusChangedDate")
+                        .HasPrecision(3)
+                        .HasColumnType("datetime2(3)");
 
                     b.Property<byte>("ReconStatusId")
                         .ValueGeneratedOnAdd()
@@ -1175,6 +1215,12 @@ namespace PayOps.Database.Migrations
                         .HasMaxLength(10)
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("SecondaryClientId")
                         .HasColumnType("int");
@@ -1214,22 +1260,31 @@ namespace PayOps.Database.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("HeldByUserId");
+
+                    b.HasIndex("IsOnHold")
+                        .HasFilter("[IsOnHold] = 1");
+
                     b.HasIndex("LegacyBatchId");
 
                     b.HasIndex("LegacyId")
                         .IsUnique()
                         .HasFilter("[LegacyId] IS NOT NULL");
 
+                    b.HasIndex("ModifiedByUserId");
+
                     b.HasIndex("PaymentBatchId");
 
                     b.HasIndex("PaymentDate");
 
-                    b.HasIndex("ReconStatusId");
+                    b.HasIndex("ReconStatusChangedByUserId");
 
                     b.HasIndex("ServiceTypeId");
 
                     b.HasIndex("UniqueReference")
                         .IsUnique();
+
+                    b.HasIndex("ReconStatusId", "PaymentBatchId");
 
                     b.HasIndex("SecondaryClientId", "ClientReference");
 
@@ -1912,6 +1967,11 @@ namespace PayOps.Database.Migrations
 
             modelBuilder.Entity("PayOps.Database.Entities.PaymentRejection", b =>
                 {
+                    b.HasOne("PayOps.Database.Entities.AppUser", "ConfirmedByUser")
+                        .WithMany()
+                        .HasForeignKey("ConfirmedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PayOps.Database.Entities.PaymentBatch", "PaymentBatch")
                         .WithMany()
                         .HasForeignKey("PaymentBatchId")
@@ -1934,6 +1994,8 @@ namespace PayOps.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("ConfirmedByUser");
+
                     b.Navigation("PaymentBatch");
 
                     b.Navigation("PaymentRecord");
@@ -1950,9 +2012,24 @@ namespace PayOps.Database.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("PayOps.Database.Entities.AppUser", "HeldByUser")
+                        .WithMany()
+                        .HasForeignKey("HeldByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PayOps.Database.Entities.AppUser", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PayOps.Database.Entities.PaymentBatch", "PaymentBatch")
                         .WithMany("PaymentSummaries")
                         .HasForeignKey("PaymentBatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PayOps.Database.Entities.AppUser", "ReconStatusChangedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReconStatusChangedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PayOps.Database.Entities.ReconStatus", "ReconStatus")
@@ -1975,9 +2052,15 @@ namespace PayOps.Database.Migrations
 
                     b.Navigation("CreatedByUser");
 
+                    b.Navigation("HeldByUser");
+
+                    b.Navigation("ModifiedByUser");
+
                     b.Navigation("PaymentBatch");
 
                     b.Navigation("ReconStatus");
+
+                    b.Navigation("ReconStatusChangedByUser");
 
                     b.Navigation("SecondaryClient");
 

@@ -22,8 +22,14 @@ public class PaymentRejection
     public DateTime CreatedDate { get; set; }
     public DateTime? ModifiedDate { get; set; }
 
+    /// <summary>Ops user who confirmed the refund details (PendingUnreconciled -> Pending).</summary>
+    public int? ConfirmedByUserId { get; set; }
+    public DateTime? ConfirmedDate { get; set; }
+    public byte[] RowVersion { get; set; } = [];
+
     public PaymentRecord PaymentRecord { get; set; } = null!;
     public PaymentBatch? PaymentBatch { get; set; }
     public ServiceType? ServiceType { get; set; }
     public TransactionStatus TransactionStatus { get; set; } = null!;
+    public AppUser? ConfirmedByUser { get; set; }
 }
