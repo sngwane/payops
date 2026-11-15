@@ -502,11 +502,11 @@ public sealed class LegacyImporter(LegacyDbContext legacy, PayOpsDbContext db, I
                     sequence = -h.HeaderId;
                     sequences.Add((secondaryId.Value, sequence));
                 }
-                var reference = Clean(h.UniquePaymentReference);
+                var reference = Clean(h.BatchId);
                 if (reference is null || reference.Length > 100 || !references.Add(reference))
                 {
                     var replacement = $"LEGACY-{h.HeaderId}";
-                    _report.Repair(step, "Header", h.HeaderId, $"UniquePaymentReference {reference ?? "(empty)"} is empty or already used; stored as {replacement}");
+                    _report.Repair(step, "Header", h.HeaderId, $"BatchId {reference ?? "(empty)"} is empty, too long or already used; UniqueReference stored as {replacement}");
                     reference = replacement;
                     references.Add(reference);
                 }
@@ -527,6 +527,7 @@ public sealed class LegacyImporter(LegacyDbContext legacy, PayOpsDbContext db, I
                 _report.Repair(step, "Header", h.HeaderId, $"BankRun {runId} does not exist; batch left without a bank run");
             e.PaymentBatchId = h.BankRunId is { } rid && _bankRuns.TryGetValue(rid, out var batchPk) ? batchPk : null;
             e.LegacyBatchId = Optional(h.BatchId, 50, step, "Header", h.HeaderId, "BatchId");
+            e.ClientReference = Required(h.UniquePaymentReference, 100, step, "Header", h.HeaderId, "UniquePaymentReference");
             e.ServiceTypeId = (byte)h.ServiceTypeId!.Value;
             e.PaymentDate = DateOnly.FromDateTime(paymentDate);
             e.RejectionAccountName = Optional(h.RejectionAccountName, 100, step, "Header", h.HeaderId, "RejectionAccountName");
@@ -666,9 +667,17 @@ public sealed class LegacyImporter(LegacyDbContext legacy, PayOpsDbContext db, I
     {
         var step = Begin("Batch comments");
         var existing = await db.PaymentSummaryComments.Where(c => c.LegacyId != null).ToDictionaryAsync(c => c.LegacyId!.Value, ct);
+        var legacyHeaders = _headers.Select(h => h.HeaderId).ToHashSet();
+        var orphans = 0;
         foreach (var c in await legacy.HeaderComments.OrderBy(c => c.CommentId).ToListAsync(ct))
         {
             step.Read++;
+            if (!legacyHeaders.Contains(c.HeaderId))
+            {
+                orphans++;
+                _report.Skip(step, "HeaderComment", c.CommentId, $"Header {c.HeaderId} no longer exists in legacy");
+                continue;
+            }
             if (!_summaries.TryGetValue(c.HeaderId, out var summaryId)) { _report.Skip(step, "HeaderComment", c.CommentId, $"Header {c.HeaderId} was not imported"); continue; }
             var isNew = !existing.TryGetValue(c.CommentId, out var e);
             e ??= new PaymentSummaryComment { LegacyId = c.CommentId, CreatedByUserId = _importUserId };
@@ -678,6 +687,8 @@ public sealed class LegacyImporter(LegacyDbContext legacy, PayOpsDbContext db, I
             Track(step, e, isNew);
         }
         await SaveAsync(ct);
+        if (orphans > 0)
+            _report.Notes.Add($"{orphans} legacy comments belong to batches that no longer exist in Header; they were skipped and are not counted in the reconciliation.");
     }
 
     private async Task ReconcileAsync(CancellationToken ct)
@@ -696,7 +707,8 @@ public sealed class LegacyImporter(LegacyDbContext legacy, PayOpsDbContext db, I
         _report.Totals.Add(new TotalLine("Batch total value", Math.Round(await legacy.Headers.SumAsync(h => h.TotalValue ?? 0, ct), 2),
             await db.PaymentSummaries.Where(s => s.LegacyId != null).SumAsync(s => s.TotalValue, ct)));
         await Count("Rejections", legacy.Rejections.CountAsync(ct), db.PaymentRejections.CountAsync(r => r.LegacyId != null, ct));
-        await Count("Batch comments", legacy.HeaderComments.CountAsync(ct), db.PaymentSummaryComments.CountAsync(c => c.LegacyId != null, ct));
+        var legacyHeaderIds = legacy.Headers.Select(h => h.HeaderId);
+        await Count("Batch comments", legacy.HeaderComments.CountAsync(c => legacyHeaderIds.Contains(c.HeaderId), ct), db.PaymentSummaryComments.CountAsync(c => c.LegacyId != null, ct));
 
         var payOps = (await db.PaymentRecords.Where(r => r.LegacyId != null).GroupBy(r => r.PaymentSummaryId)
             .Select(g => new { g.Key, Count = g.Count(), Amount = g.Sum(r => r.Amount) }).ToListAsync(ct))

@@ -35,6 +35,7 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
                 ClientName = check.ClientName,
                 batch.Header.UniqueClientId,
                 summary.UniqueReference,
+                summary.ClientReference,
                 PaymentDate = summary.PaymentDate.ToString("yyyy-MM-dd"),
                 UploadDate = clock.GetUtcNow().UtcDateTime,
                 Records = summary.TotalRecords,
@@ -56,7 +57,7 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
             return duplicate;
         }
 
-        return new BatchAcceptedDto(summary.Id, summary.UniqueReference, batch.Header.UniqueClientId, summary.PaymentDate, check.ServiceType.ToString(),
+        return new BatchAcceptedDto(summary.Id, summary.UniqueReference, summary.ClientReference, batch.Header.UniqueClientId, summary.PaymentDate, check.ServiceType.ToString(),
             summary.TotalRecords, summary.TotalValue, summary.FeeTotal);
     }
 
@@ -150,28 +151,24 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
     }
 
     /// <summary>
-    /// A reused UniquePaymentReference or SequenceNumber is a conflict. When the same client retries the identical payload the
-    /// conflict carries the existing batch id so the client can treat it as success.
+    /// A reused SequenceNumber for the same client is a conflict. UniquePaymentReference is not checked: legacy clients send their
+    /// client ID there on every batch. When the client retries the identical payload the conflict carries the existing batch id
+    /// so the client can treat it as success.
     /// </summary>
     private async Task<BatchError?> FindDuplicateAsync(int secondaryClientId, BatchHeader header, byte[]? payloadHash, CancellationToken cancellationToken)
     {
-        var existing = await db.PaymentSummaries.AsNoTracking()
-            .Where(s => s.UniqueReference == header.UniquePaymentReference
-                        || (s.SecondaryClientId == secondaryClientId && s.SequenceNumber == header.SequenceNumber))
-            .Select(s => new { s.Id, s.SecondaryClientId, s.UniqueReference })
+        var existingId = await db.PaymentSummaries.AsNoTracking()
+            .Where(s => s.SecondaryClientId == secondaryClientId && s.SequenceNumber == header.SequenceNumber)
+            .Select(s => (int?)s.Id)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existing is null)
+        if (existingId is not { } id)
             return null;
-        if (existing.SecondaryClientId != secondaryClientId)
-            return BatchError.Conflict("UniquePaymentReference has already been used.");
 
         var samePayload = payloadHash is not null && await db.BatchUploads
-            .AnyAsync(u => u.PaymentSummaryId == existing.Id && u.IsAccepted && u.PayloadHash == payloadHash, cancellationToken);
+            .AnyAsync(u => u.PaymentSummaryId == id && u.IsAccepted && u.PayloadHash == payloadHash, cancellationToken);
         return samePayload
-            ? BatchError.Conflict($"This batch was already accepted as batch {existing.Id}.", existing.Id)
-            : existing.UniqueReference == header.UniquePaymentReference
-                ? BatchError.Conflict($"UniquePaymentReference has already been used by batch {existing.Id}.", existing.Id)
-                : BatchError.Conflict($"SequenceNumber has already been used by batch {existing.Id}.", existing.Id);
+            ? BatchError.Conflict($"This batch was already accepted as batch {id}.", id)
+            : BatchError.Conflict($"SequenceNumber has already been used by batch {id}.", id);
     }
 
     private static PaymentSummary BuildSummary(BatchSubmission batch, BatchCheck check)
@@ -186,7 +183,8 @@ public sealed class BatchSubmissionService(BatchFileDbContext db, TimeProvider c
             RejectionBranchCode = h.RejectionBranchCode,
             RejectionAccountNumber = h.RejectionAccountNumber,
             SequenceNumber = h.SequenceNumber,
-            UniqueReference = h.UniquePaymentReference,
+            UniqueReference = Guid.NewGuid().ToString("D").ToUpperInvariant(),
+            ClientReference = h.UniquePaymentReference,
             TotalRecords = batch.Payments.Count,
             TotalValue = check.PaymentTotal,
             FeeTotal = check.FeeTotal,

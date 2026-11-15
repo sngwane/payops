@@ -85,7 +85,7 @@ public class BatchSubmissionTests(SqlServerFixture fixture)
         Assert.Contains("payments[1].branchCode", result.Error.Errors.Keys);
         Assert.Contains("payments[2].amount", result.Error.Errors.Keys);
         await using var check = fixture.CreatePayOpsContext();
-        Assert.False(await check.PaymentSummaries.AnyAsync(s => s.UniqueReference == batch.Header.UniquePaymentReference));
+        Assert.False(await check.PaymentSummaries.AnyAsync(s => s.ClientReference == batch.Header.UniquePaymentReference));
         var upload = await check.BatchUploads.SingleAsync(u => u.UniqueReference == batch.Header.UniquePaymentReference);
         Assert.False(upload.IsAccepted);
         Assert.Contains("payments[1].accountNumber", upload.ErrorsJson);
@@ -145,7 +145,7 @@ public class BatchSubmissionTests(SqlServerFixture fixture)
     }
 
     [Fact]
-    public async Task Duplicate_reference_is_a_conflict_and_an_identical_retry_returns_the_existing_batch()
+    public async Task Duplicate_sequence_is_a_conflict_and_an_identical_retry_returns_the_existing_batch()
     {
         await using var payOps = fixture.CreatePayOpsContext();
         var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
@@ -156,14 +156,34 @@ public class BatchSubmissionTests(SqlServerFixture fixture)
         var first = await service.SubmitAsync(caller, batch, BatchUploadFormat.Json, Hash("same"));
         var retry = await service.SubmitAsync(caller, batch, BatchUploadFormat.Json, Hash("same"));
         var changed = await service.SubmitAsync(caller, batch with { Footer = batch.Footer }, BatchUploadFormat.Json, Hash("changed"));
-        var sequence = await service.SubmitAsync(caller, BatchTestData.Batch(client.UniqueClientId, sequence: batch.Header.SequenceNumber), BatchUploadFormat.Json, Hash("seq"));
 
         Assert.True(first.IsSuccess);
         Assert.Equal(BatchErrorKind.Conflict, retry.Error!.Kind);
         Assert.Equal(first.Value!.BatchId, retry.Error.ExistingBatchId);
         Assert.Contains("already accepted", retry.Error.Message);
-        Assert.Contains("UniquePaymentReference", changed.Error!.Message);
-        Assert.Contains("SequenceNumber", sequence.Error!.Message);
+        Assert.Contains("SequenceNumber", changed.Error!.Message);
+        Assert.Equal(first.Value.BatchId, changed.Error.ExistingBatchId);
+    }
+
+    [Fact]
+    public async Task Client_reference_may_repeat_like_legacy_and_each_batch_gets_its_own_unique_reference()
+    {
+        await using var payOps = fixture.CreatePayOpsContext();
+        var (client, _, caller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        var (other, _, otherCaller) = await BatchTestData.AddClientWithKeyAsync(payOps);
+        await using var db = fixture.CreateBatchFileContext();
+        var service = BatchTestData.Service(db);
+
+        var first = await service.SubmitAsync(caller, BatchTestData.Batch(client.UniqueClientId, reference: client.UniqueClientId), BatchUploadFormat.Json, Hash("a"));
+        var second = await service.SubmitAsync(caller, BatchTestData.Batch(client.UniqueClientId, reference: client.UniqueClientId), BatchUploadFormat.Json, Hash("b"));
+        var otherClient = await service.SubmitAsync(otherCaller, BatchTestData.Batch(other.UniqueClientId, reference: client.UniqueClientId), BatchUploadFormat.Json, Hash("c"));
+
+        Assert.True(first.IsSuccess, first.Error?.Message);
+        Assert.True(second.IsSuccess, second.Error?.Message);
+        Assert.True(otherClient.IsSuccess, otherClient.Error?.Message);
+        Assert.Equal(client.UniqueClientId, second.Value!.ClientReference);
+        Assert.NotEqual(first.Value!.UniqueReference, second.Value.UniqueReference);
+        Assert.True(Guid.TryParse(second.Value.UniqueReference, out _));
     }
 
     [Fact]

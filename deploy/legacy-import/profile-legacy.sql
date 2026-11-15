@@ -35,6 +35,7 @@ UNION ALL SELECT 'Duplicate SequenceNumber per client', COUNT(*) FROM Header h W
 UNION ALL SELECT 'Transactions with no Header', COUNT(*) FROM Transactions t WHERE NOT EXISTS (SELECT 1 FROM Header h WHERE h.BatchId = t.BatchId)
 UNION ALL SELECT 'Transactions with amount <= 0 or empty', COUNT(*) FROM Transactions WHERE ISNULL(Amount, 0) <= 0
 UNION ALL SELECT 'Transactions missing surname/account/branch', COUNT(*) FROM Transactions WHERE ISNULL(EmployeeSurname, '') = '' OR ISNULL(AccountNumber, '') = '' OR ISNULL(BranchCode, '') = ''
+UNION ALL SELECT 'Comments with no Header', COUNT(*) FROM HeaderComment c WHERE NOT EXISTS (SELECT 1 FROM Header h WHERE h.HeaderId = c.HeaderId)
 UNION ALL SELECT 'Rejections with unknown transaction', COUNT(*) FROM Rejections r WHERE NOT EXISTS (SELECT 1 FROM Transactions t WHERE t.TransactionId = r.TransactionId)
 UNION ALL SELECT 'Transactions with more than one rejection', COUNT(*) FROM (SELECT TransactionId FROM Rejections GROUP BY TransactionId HAVING COUNT(*) > 1) d
 UNION ALL SELECT 'Distinct BillingRates.DebtorsCode', COUNT(DISTINCT DebtorsCode) FROM BillingRates;

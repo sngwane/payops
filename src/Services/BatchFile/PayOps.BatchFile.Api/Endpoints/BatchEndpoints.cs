@@ -54,10 +54,10 @@ public static class BatchEndpoints
             return (await service.ValidateAsync(user.GetBatchCaller(), batch!, ct)).ToHttp();
         }).Accepts<BatchSubmission>("application/json", "application/xml", "text/xml");
 
-        batches.MapGet("/", async (ClaimsPrincipal user, BatchQueries queries, DateOnly? from, DateOnly? to, string? uniqueReference, int? page, int? pageSize,
+        batches.MapGet("/", async (ClaimsPrincipal user, BatchQueries queries, DateOnly? from, DateOnly? to, string? uniqueReference, string? clientReference, int? page, int? pageSize,
                 CancellationToken ct)
             => (await queries.ListBatchesAsync(user.GetBatchCaller(),
-                new BatchListQuery(from, to, uniqueReference, page ?? 1, pageSize ?? BatchListQuery.DefaultPageSize), ct)).ToHttp());
+                new BatchListQuery(from, to, uniqueReference, clientReference, page ?? 1, pageSize ?? BatchListQuery.DefaultPageSize), ct)).ToHttp());
 
         batches.MapGet("/{id:int}", async (int id, ClaimsPrincipal user, BatchQueries queries, int? page, int? pageSize, CancellationToken ct)
             => (await queries.GetBatchAsync(user.GetBatchCaller(), id, page ?? 1, pageSize ?? 500, ct)).ToHttp());
