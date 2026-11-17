@@ -42,7 +42,7 @@ public class PaymentsApiTests(SqlServerFixture fixture) : IDisposable
 
     private static Task<T> Get<T>(HttpClient http, string url) => http.GetAsync(url).ContinueWith(t => Read<T>(t.Result)).Unwrap();
 
-    private sealed record Seed(SecondaryClient Client, int OpenId, int SentId, long RejectionId, long PaidTodayId);
+    private sealed record Seed(SecondaryClient Client, int OpenId, int SentId, long RejectionId, long PaidTodayId, string CreatorName);
 
     /// <summary>
     /// One client with an open batch (2 pending payments) and a batch in a bank run: one payment paid "today" just after
@@ -57,6 +57,7 @@ public class PaymentsApiTests(SqlServerFixture fixture) : IDisposable
         var run = new PaymentBatch { BankId = bank.Id, Reference = TestData.Unique("BR"), Name = "Run", FileName = "run.txt", RunDate = DateTime.UtcNow, CreatedByUserId = maker.Id };
 
         var open = TestData.NewSummary(client.Id, 1);
+        open.CreatedByUserId = maker.Id;
         open.PaymentRecords.Add(TestData.NewRecord(100m));
         open.PaymentRecords.Add(TestData.NewRecord(200m));
 
@@ -85,7 +86,7 @@ public class PaymentsApiTests(SqlServerFixture fixture) : IDisposable
         };
         db.PaymentRejections.Add(rejection);
         await db.SaveChangesAsync();
-        return new Seed(client, open.Id, sent.Id, rejection.Id, paidToday.Id);
+        return new Seed(client, open.Id, sent.Id, rejection.Id, paidToday.Id, maker.Username);
     }
 
     [Fact]
@@ -200,7 +201,7 @@ public class PaymentsApiTests(SqlServerFixture fixture) : IDisposable
         Assert.Equal(HttpStatusCode.Conflict, (await http.PostAsJsonAsync($"/api/batches/{seed.OpenId}/release", new ReleaseRequest("again"))).StatusCode);
 
         var history = await Get<List<BatchChangeDto>>(http, $"/api/batches/{seed.OpenId}/history");
-        Assert.Equal("Created", history[0].Field);
+        Assert.Equal(seed.CreatorName, Assert.Single(history, c => c.Field == "Created").ChangedBy);
         Assert.Contains(history, c => c is { Field: "OnHold", OldValue: "False", NewValue: "True", ChangedBy: "test" });
         Assert.Contains(history, c => c is { Field: "OnHold", OldValue: "True", NewValue: "False", ChangedBy: "test" });
         Assert.Contains(history, c => c is { Field: "Comment", NewValue: "Put on hold: Client asked to wait" });
@@ -244,6 +245,10 @@ public class PaymentsApiTests(SqlServerFixture fixture) : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, (await http.PutAsJsonAsync($"{url}/refund-account", new UpdateRefundAccountRequest("Client", "25065", "62000000009\n"))).StatusCode);
         var corrected = await Read<RejectionDetailDto>(await http.PutAsJsonAsync($"{url}/refund-account", new UpdateRefundAccountRequest("Client refunds", "198765", "1234567890")));
         Assert.Equal("1234567890", corrected.AccountNumber);
+        Assert.Equal(HttpStatusCode.BadRequest, (await http.PutAsJsonAsync($"{url}/refund-account", new UpdateRefundAccountRequest("Client", "\u0661\u0662\u0663\u0664\u0665\u0666", "1"))).StatusCode);
+        var audit = Assert.Single(await Get<List<CommentDto>>(http, $"/api/batches/{seed.SentId}/comments"));
+        Assert.Equal($"Refund account for rejection {seed.RejectionId} changed from Rejections 250655 62000000001 to Client refunds 198765 1234567890", audit.Comment);
+        Assert.Equal("test", audit.CreatedBy);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await http.PostAsJsonAsync($"{url}/confirm", new ConfirmRejectionRequest(""))).StatusCode);
         var confirmed = await Read<RejectionDetailDto>(await http.PostAsJsonAsync($"{url}/confirm", new ConfirmRejectionRequest("Checked with client"), Json));

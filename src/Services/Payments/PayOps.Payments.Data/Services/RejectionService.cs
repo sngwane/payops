@@ -80,7 +80,7 @@ public sealed partial class RejectionService(PaymentsDbContext db, StaffUserServ
         if (errors.Count > 0)
             return PaymentsError.Invalid(errors);
 
-        var rejection = await db.PaymentRejections.FirstOrDefaultAsync(r => r.Id == id, ct);
+        var rejection = await db.PaymentRejections.Include(r => r.PaymentRecord).FirstOrDefaultAsync(r => r.Id == id, ct);
         if (rejection is null)
             return PaymentsError.NotFound($"Rejection {id} was not found.");
         PaymentsGuard.ApplyRowVersion(db, rejection, request.RowVersion, errors);
@@ -89,11 +89,20 @@ public sealed partial class RejectionService(PaymentsDbContext db, StaffUserServ
         if (rejection.TransactionStatusId != (byte)TransactionStatusCode.PendingUnreconciled)
             return PaymentsError.Conflict($"Rejection {id} is {(TransactionStatusCode)rejection.TransactionStatusId}; the refund account can only change while it is PendingUnreconciled.");
 
-        await users.GetUserIdAsync(who, ct);
+        var userId = await users.GetUserIdAsync(who, ct);
+        var now = clock.GetUtcNow().UtcDateTime;
+        // Audit trail: the change and who made it are kept as a batch comment (shown in the batch history).
+        db.PaymentSummaryComments.Add(new PaymentSummaryComment
+        {
+            PaymentSummaryId = rejection.PaymentRecord.PaymentSummaryId,
+            Comment = Clip($"Refund account for rejection {id} changed from {rejection.AccountName} {rejection.BranchCode} {rejection.AccountNumber} to {name} {branch} {account}", 1000),
+            CreatedByUserId = userId,
+            CreatedDate = now
+        });
         rejection.AccountName = name!;
         rejection.BranchCode = branch!;
         rejection.AccountNumber = account!;
-        rejection.ModifiedDate = clock.GetUtcNow().UtcDateTime;
+        rejection.ModifiedDate = now;
         return await PaymentsGuard.SaveAsync(db, ct) is { } saveError ? saveError : await GetAsync(id, ct);
     }
 
@@ -179,9 +188,9 @@ public sealed partial class RejectionService(PaymentsDbContext db, StaffUserServ
         return rejections.OrderByDescending(r => r.CreatedDate).ThenByDescending(r => r.Id);
     }
 
-    [GeneratedRegex(@"\A\d{6}\z")]
+    [GeneratedRegex(@"\A[0-9]{6}\z")]
     private static partial Regex BranchCode();
 
-    [GeneratedRegex(@"\A\d{1,20}\z")]
+    [GeneratedRegex(@"\A[0-9]{1,20}\z")]
     private static partial Regex AccountNumber();
 }

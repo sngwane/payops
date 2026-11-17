@@ -153,16 +153,17 @@ public sealed class OpsBatchQueries(PaymentsDbContext db)
         var versions = await db.PaymentSummaries.TemporalAll().AsNoTracking()
             .Where(s => s.Id == batchId)
             .OrderBy(s => EF.Property<DateTime>(s, "ValidFrom"))
-            .Select(s => new SummaryVersion(EF.Property<DateTime>(s, "ValidFrom"), s.ReconStatusId, s.IsOnHold, s.HoldReason, s.PaymentBatchId, s.ModifiedByUserId))
+            .Select(s => new SummaryVersion(EF.Property<DateTime>(s, "ValidFrom"), s.ReconStatusId, s.IsOnHold, s.HoldReason, s.PaymentBatchId, s.ModifiedByUserId, s.CreatedByUserId))
             .ToListAsync(ct);
         if (versions.Count == 0)
             return PaymentsError.NotFound($"Batch {batchId} was not found.");
 
-        var userIds = versions.Where(v => v.ModifiedByUserId != null).Select(v => v.ModifiedByUserId!.Value).Distinct().ToList();
+        var userIds = versions.Select(v => v.ModifiedByUserId).Append(versions[0].CreatedByUserId).OfType<int>().Distinct().ToList();
         var users = await db.AppUsers.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Username, ct);
-        string? By(SummaryVersion v) => v.ModifiedByUserId is { } uid && users.TryGetValue(uid, out var name) ? name : null;
+        string? Name(int? userId) => userId is { } uid && users.TryGetValue(uid, out var name) ? name : null;
+        string? By(SummaryVersion v) => Name(v.ModifiedByUserId);
 
-        var changes = new List<BatchChangeDto> { new(versions[0].From, "Created", null, ((ReconStatusCode)versions[0].ReconStatusId).ToString(), By(versions[0])) };
+        var changes = new List<BatchChangeDto> { new(versions[0].From, "Created", null, ((ReconStatusCode)versions[0].ReconStatusId).ToString(), Name(versions[0].CreatedByUserId)) };
         for (var i = 1; i < versions.Count; i++)
         {
             var (before, after) = (versions[i - 1], versions[i]);
@@ -182,7 +183,7 @@ public sealed class OpsBatchQueries(PaymentsDbContext db)
         return PaymentsResult<IReadOnlyList<BatchChangeDto>>.Ok(changes.OrderBy(c => c.ChangedDate).ToList());
     }
 
-    private sealed record SummaryVersion(DateTime From, byte ReconStatusId, bool IsOnHold, string? HoldReason, int? PaymentBatchId, int? ModifiedByUserId);
+    private sealed record SummaryVersion(DateTime From, byte ReconStatusId, bool IsOnHold, string? HoldReason, int? PaymentBatchId, int? ModifiedByUserId, int? CreatedByUserId);
 
     private IQueryable<CommentDto> Comments(int batchId)
         => db.PaymentSummaryComments.AsNoTracking()
