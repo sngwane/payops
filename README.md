@@ -18,6 +18,7 @@ src/Services/Payments/PayOps.Payments.Data    Payments API context (subset of ta
 src/Services/Payments/PayOps.Payments.Api     Payments API (ops back office: batches, reconciliation, holds, paid, rejections)
 tests/PayOps.Tests                            Integration tests against SQL Server 2022 in Docker
 deploy/docker-compose.yml                     SQL Server container for local / single-server use
+docs/plans                                    Approved plans and design documents (see docs/plans/README.md)
 ```
 Each API gets its own small DbContext that maps only the tables it uses. Only `PayOpsDbContext` has migrations.
 
