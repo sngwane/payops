@@ -25,15 +25,30 @@ public class PaymentSummary
     /// <summary>Billing fees included in the footer total (TotalValue minus the sum of the payments); 0 when none.</summary>
     public decimal FeeTotal { get; set; }
     public byte ReconStatusId { get; set; }
+    public int? ReconStatusChangedByUserId { get; set; }
+    public DateTime? ReconStatusChangedDate { get; set; }
+
+    /// <summary>A held batch is never picked up by a bank run. Only possible before the batch is in a bank run.</summary>
+    public bool IsOnHold { get; set; }
+    public string? HoldReason { get; set; }
+    public int? HeldByUserId { get; set; }
+    public DateTime? HeldDate { get; set; }
     public int? CreatedByUserId { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? ModifiedDate { get; set; }
+
+    /// <summary>Staff user behind the latest change; with the temporal history this shows who changed what.</summary>
+    public int? ModifiedByUserId { get; set; }
+    public byte[] RowVersion { get; set; } = [];
 
     public PaymentBatch? PaymentBatch { get; set; }
     public SecondaryClient SecondaryClient { get; set; } = null!;
     public ServiceType ServiceType { get; set; } = null!;
     public ReconStatus ReconStatus { get; set; } = null!;
     public AppUser? CreatedByUser { get; set; }
+    public AppUser? ModifiedByUser { get; set; }
+    public AppUser? HeldByUser { get; set; }
+    public AppUser? ReconStatusChangedByUser { get; set; }
     public ICollection<PaymentRecord> PaymentRecords { get; set; } = new List<PaymentRecord>();
     public ICollection<BatchContact> Contacts { get; set; } = new List<BatchContact>();
     public ICollection<PaymentSummaryComment> Comments { get; set; } = new List<PaymentSummaryComment>();

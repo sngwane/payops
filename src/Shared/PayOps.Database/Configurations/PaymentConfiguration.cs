@@ -51,6 +51,13 @@ public class PaymentSummaryConfiguration : IEntityTypeConfiguration<PaymentSumma
         builder.HasIndex(e => new { e.SecondaryClientId, e.SequenceNumber }).IsUnique();
         builder.HasIndex(e => new { e.SecondaryClientId, e.ClientReference });
         builder.HasIndex(e => e.PaymentDate);
+        builder.Property(e => e.HoldReason).HasMaxLength(500);
+        builder.Property(e => e.RowVersion).IsRowVersion();
+        builder.HasIndex(e => new { e.ReconStatusId, e.PaymentBatchId });
+        builder.HasIndex(e => e.IsOnHold).HasFilter("[IsOnHold] = 1");
+        builder.HasOne(e => e.ModifiedByUser).WithMany().HasForeignKey(e => e.ModifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.HeldByUser).WithMany().HasForeignKey(e => e.HeldByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.ReconStatusChangedByUser).WithMany().HasForeignKey(e => e.ReconStatusChangedByUserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.PaymentBatch).WithMany(b => b.PaymentSummaries).HasForeignKey(e => e.PaymentBatchId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.SecondaryClient).WithMany(c => c.PaymentSummaries).HasForeignKey(e => e.SecondaryClientId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.ServiceType).WithMany().HasForeignKey(e => e.ServiceTypeId).OnDelete(DeleteBehavior.Restrict);
@@ -113,6 +120,8 @@ public class PaymentRejectionConfiguration : IEntityTypeConfiguration<PaymentRej
         builder.Property(e => e.TransactionStatusId).HasDefaultValue((byte)TransactionStatusCode.PendingUnreconciled).HasSentinel((byte)0);
         builder.Property(e => e.CreatedDate).HasDefaultValueSql("SYSUTCDATETIME()");
         builder.HasIndex(e => e.PaymentRecordId).IsUnique();
+        builder.Property(e => e.RowVersion).IsRowVersion();
+        builder.HasOne(e => e.ConfirmedByUser).WithMany().HasForeignKey(e => e.ConfirmedByUserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(e => e.TransactionStatusId);
         builder.HasIndex(e => e.BankFileReference);
         builder.HasOne(e => e.PaymentRecord).WithOne(r => r.PaymentRejection).HasForeignKey<PaymentRejection>(e => e.PaymentRecordId).OnDelete(DeleteBehavior.Restrict);

@@ -18,7 +18,7 @@ public class PaymentsDbContext(DbContextOptions<PaymentsDbContext> options) : Db
         typeof(PrimaryClientConfiguration), typeof(SecondaryClientConfiguration), typeof(BankConfiguration),
         typeof(PaymentBatchConfiguration), typeof(PaymentSummaryConfiguration), typeof(PaymentSummaryCommentConfiguration),
         typeof(PaymentRecordConfiguration), typeof(PaymentRejectionConfiguration), typeof(PaymentRecordStatusHistoryConfiguration),
-        typeof(BatchContactConfiguration)
+        typeof(BatchContactConfiguration), typeof(NotificationMessageConfiguration)
     ];
 
     public DbSet<PaymentBatch> PaymentBatches => Set<PaymentBatch>();
@@ -27,6 +27,9 @@ public class PaymentsDbContext(DbContextOptions<PaymentsDbContext> options) : Db
     public DbSet<PaymentRejection> PaymentRejections => Set<PaymentRejection>();
     public DbSet<PaymentRecordStatusHistory> PaymentRecordStatusHistories => Set<PaymentRecordStatusHistory>();
     public DbSet<SecondaryClient> SecondaryClients => Set<SecondaryClient>();
+    public DbSet<PaymentSummaryComment> PaymentSummaryComments => Set<PaymentSummaryComment>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<NotificationMessage> NotificationMessages => Set<NotificationMessage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         => PayOpsConventions.Apply(configurationBuilder);
